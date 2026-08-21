@@ -1,0 +1,10 @@
+node_modules/
+uploads/
+.env
+.vscode/
+build/
+dist/
+.claude/
+.agent/
+.cursor/
+.md/
