@@ -28,6 +28,13 @@ const requireAuth = async (req, res, next) => {
       });
     }
 
+    if (user.accountStatus === 'BLOCKED') {
+      return res.status(403).json({ success: false, message: 'This account is blocked.' });
+    }
+    if (user.accountStatus === 'SUSPENDED') {
+      return res.status(403).json({ success: false, message: 'This account is suspended.' });
+    }
+
     req.user = user;
     next();
   } catch (err) {
@@ -40,7 +47,7 @@ const requireAuth = async (req, res, next) => {
 
 /**
  * Role Authorization Middleware
- * Enforces role access control (ADMIN, ADVERTISER)
+ * Enforces role access control (ADMIN, ADVERTISER, USER)
  */
 const requireRole = (...roles) => {
   return (req, res, next) => {
@@ -58,5 +65,6 @@ module.exports = {
   requireAuth,
   requireRole,
   authenticateToken: requireAuth,
-  authorize: requireRole
+  authorize: requireRole,
+  authenticate: requireAuth
 };

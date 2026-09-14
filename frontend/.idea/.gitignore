@@ -1,3 +1,9 @@
 # Default ignored files
 /shelf/
 /workspace.xml
+/.claude/
+.agent/
+.cursor/
+.md/
+.claude
+.agent  

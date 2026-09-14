@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'custom_text_field.dart';
-import 'gold_button.dart';
+import 'primary_button.dart';
+import '../services/auth_service.dart';
+import '../screens/main_navigation_screen.dart';
 
 class LoginForm extends StatefulWidget {
   final VoidCallback onSwitchToRegister;
 
-  const LoginForm({
-    super.key,
-    required this.onSwitchToRegister,
-  });
+  const LoginForm({super.key, required this.onSwitchToRegister});
 
   @override
   State<LoginForm> createState() => _LoginFormState();
@@ -32,32 +31,57 @@ class _LoginFormState extends State<LoginForm> {
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      
-      // Simulate API network request
-      await Future.delayed(const Duration(seconds: 2));
 
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppTheme.cardDark,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: AppTheme.goldPrimary),
-            ),
-            content: Row(
-              children: const [
-                Icon(Icons.check_circle_rounded, color: AppTheme.goldLight),
-                SizedBox(width: 12),
-                Text(
-                  'Welcome back to SmartAds!',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          ),
+      try {
+        await AuthService().login(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
         );
+
+        if (mounted) {
+          setState(() => _isLoading = false);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppTheme.cardDark,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: AppTheme.accentPrimary),
+              ),
+              content: Row(
+                children: const [
+                  Icon(Icons.check_circle_rounded, color: AppTheme.accentLight),
+                  SizedBox(width: 12),
+                  Text(
+                    'Welcome back to SmartAds!',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const MainNavigationScreen(),
+            ),
+          );
+        }
+      } catch (err) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.red.shade900,
+              content: Text('Login failed: ${err.toString()}'),
+            ),
+          );
+        }
       }
     }
   }
@@ -70,15 +94,18 @@ class _LoginFormState extends State<LoginForm> {
         backgroundColor: AppTheme.cardDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppTheme.borderGold),
+          side: const BorderSide(color: AppTheme.borderSubtle),
         ),
         title: Row(
           children: const [
-            Icon(Icons.lock_reset_rounded, color: AppTheme.goldLight),
+            Icon(Icons.lock_reset_rounded, color: AppTheme.accentLight),
             SizedBox(width: 10),
             Text(
               'Reset Password',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -103,7 +130,10 @@ class _LoginFormState extends State<LoginForm> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -111,15 +141,18 @@ class _LoginFormState extends State<LoginForm> {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Password reset link sent to your email.'),
-                  backgroundColor: AppTheme.goldDark,
+                  backgroundColor: AppTheme.accentDark,
                 ),
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.goldPrimary,
-              foregroundColor: Colors.black,
+              backgroundColor: AppTheme.accentPrimary,
+              foregroundColor: Colors.white,
             ),
-            child: const Text('Send Reset Link', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Send Reset Link',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -145,10 +178,7 @@ class _LoginFormState extends State<LoginForm> {
           const SizedBox(height: 6),
           const Text(
             'Enter your credentials to access your advertising dashboard.',
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 13,
-            ),
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 28),
 
@@ -163,7 +193,9 @@ class _LoginFormState extends State<LoginForm> {
               if (value == null || value.trim().isEmpty) {
                 return 'Please enter your email address';
               }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
+              if (!RegExp(
+                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+              ).hasMatch(value.trim())) {
                 return 'Please enter a valid email address';
               }
               return null;
@@ -202,10 +234,10 @@ class _LoginFormState extends State<LoginForm> {
                     height: 24,
                     child: Checkbox(
                       value: _rememberMe,
-                      activeColor: AppTheme.goldPrimary,
+                      activeColor: AppTheme.accentPrimary,
                       checkColor: Colors.black,
                       side: BorderSide(
-                        color: AppTheme.goldPrimary.withValues(alpha: 0.5),
+                        color: AppTheme.accentPrimary.withValues(alpha: 0.5),
                         width: 1.5,
                       ),
                       shape: RoundedRectangleBorder(
@@ -231,7 +263,7 @@ class _LoginFormState extends State<LoginForm> {
                 child: const Text(
                   'Forgot Password?',
                   style: TextStyle(
-                    color: AppTheme.goldLight,
+                    color: AppTheme.accentLight,
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                   ),
@@ -242,7 +274,7 @@ class _LoginFormState extends State<LoginForm> {
           const SizedBox(height: 28),
 
           // Sign In CTA Button
-          GoldButton(
+          PrimaryButton(
             text: 'SIGN IN',
             icon: Icons.login_rounded,
             isLoading: _isLoading,
@@ -256,7 +288,7 @@ class _LoginFormState extends State<LoginForm> {
               Expanded(
                 child: Container(
                   height: 1,
-                  color: AppTheme.borderGold.withValues(alpha: 0.2),
+                  color: AppTheme.borderSubtle.withValues(alpha: 0.2),
                 ),
               ),
               const Padding(
@@ -274,7 +306,7 @@ class _LoginFormState extends State<LoginForm> {
               Expanded(
                 child: Container(
                   height: 1,
-                  color: AppTheme.borderGold.withValues(alpha: 0.2),
+                  color: AppTheme.borderSubtle.withValues(alpha: 0.2),
                 ),
               ),
             ],
@@ -316,7 +348,7 @@ class _LoginFormState extends State<LoginForm> {
                   child: const Text(
                     'Register Now',
                     style: TextStyle(
-                      color: AppTheme.goldLight,
+                      color: AppTheme.accentLight,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
@@ -336,9 +368,7 @@ class _LoginFormState extends State<LoginForm> {
       decoration: BoxDecoration(
         color: AppTheme.inputBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppTheme.borderGold.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: AppTheme.borderSubtle.withValues(alpha: 0.3)),
       ),
       child: Material(
         color: Colors.transparent,
@@ -355,7 +385,7 @@ class _LoginFormState extends State<LoginForm> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: AppTheme.goldLight, size: 22),
+              Icon(icon, color: AppTheme.accentLight, size: 22),
               const SizedBox(width: 8),
               Text(
                 label,

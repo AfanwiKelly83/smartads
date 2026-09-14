@@ -42,8 +42,11 @@ const register = async (req, res, next) => {
       });
     }
 
-    // 3. User Creation (Role defaults to ADVERTISER unless ADMIN specified)
-    const userRole = role === 'ADMIN' ? 'ADMIN' : 'ADVERTISER';
+    // 3. Only explicitly requested supported roles are accepted.
+    const requestedRole = String(role || 'USER').toUpperCase();
+    const userRole = ['ADMIN', 'ADVERTISER', 'BILLBOARD_OWNER', 'USER'].includes(requestedRole)
+      ? requestedRole
+      : 'USER';
 
     const user = await User.create({
       fullName,
@@ -52,6 +55,7 @@ const register = async (req, res, next) => {
       role: userRole,
       phoneNumber
     });
+
 
     const token = generateToken(user);
 
@@ -106,6 +110,19 @@ const login = async (req, res, next) => {
       });
     }
 
+    if (user.accountStatus === 'BLOCKED') {
+      return res.status(403).json({
+        success: false,
+        message: 'This account is blocked.'
+      });
+    }
+    if (user.accountStatus === 'SUSPENDED') {
+      return res.status(403).json({
+        success: false,
+        message: 'This account is suspended.'
+      });
+    }
+
     // 4. Generate JWT Token
     const token = generateToken(user);
 
@@ -128,19 +145,91 @@ const login = async (req, res, next) => {
   }
 };
 
+const sanitizeUser = (user) => ({
+  userId: user.userId,
+  fullName: user.fullName,
+  email: user.email,
+  phoneNumber: user.phoneNumber,
+  role: user.role,
+  createdAt: user.createdAt
+});
+
 // GET /api/v1/auth/me
 const getProfile = async (req, res, next) => {
   try {
     return res.json({
       success: true,
-      data: {
-        userId: req.user.userId,
-        fullName: req.user.fullName,
-        email: req.user.email,
-        phoneNumber: req.user.phoneNumber,
-        role: req.user.role,
-        createdAt: req.user.createdAt
-      }
+      data: sanitizeUser(req.user)
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// PUT /api/v1/auth/me
+const updateProfile = async (req, res, next) => {
+  try {
+    const { fullName, phoneNumber } = req.body;
+
+    if (!fullName || !String(fullName).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'fullName is required.'
+      });
+    }
+
+    const nextFullName = String(fullName).trim();
+    const nextPhoneNumber = phoneNumber === undefined || phoneNumber === null
+      ? req.user.phoneNumber
+      : String(phoneNumber).trim() || null;
+
+    req.user.fullName = nextFullName;
+    req.user.phoneNumber = nextPhoneNumber;
+    await req.user.save();
+
+    return res.json({
+      success: true,
+      message: 'Profile updated successfully.',
+      data: sanitizeUser(req.user)
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /api/v1/auth/change-password
+const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'currentPassword and newPassword are required.'
+      });
+    }
+
+    if (String(newPassword).length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'newPassword must be at least 8 characters long.'
+      });
+    }
+
+    const isCurrentPasswordValid = await req.user.comparePassword(currentPassword);
+    if (!isCurrentPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect.'
+      });
+    }
+
+    req.user.password = String(newPassword);
+    await req.user.save();
+
+    return res.json({
+      success: true,
+      message: 'Password changed successfully.'
     });
   } catch (err) {
     next(err);
@@ -150,5 +239,7 @@ const getProfile = async (req, res, next) => {
 module.exports = {
   register,
   login,
-  getProfile
+  getProfile,
+  updateProfile,
+  changePassword
 };

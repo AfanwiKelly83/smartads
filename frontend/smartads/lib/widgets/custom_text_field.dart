@@ -63,7 +63,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
             hintText: widget.hint,
             prefixIcon: Icon(
               widget.prefixIcon,
-              color: AppTheme.goldPrimary.withValues(alpha: 0.8),
+              color: AppTheme.accentPrimary.withValues(alpha: 0.8),
               size: 20,
             ),
             suffixIcon: widget.isPassword

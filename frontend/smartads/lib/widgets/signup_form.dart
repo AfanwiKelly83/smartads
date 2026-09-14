@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'custom_text_field.dart';
-import 'gold_button.dart';
+import 'primary_button.dart';
 import 'password_strength_widget.dart';
-import 'role_selector.dart';
+import '../services/auth_service.dart';
+import '../screens/main_navigation_screen.dart';
 
 class SignUpForm extends StatefulWidget {
   final VoidCallback onSwitchToLogin;
 
-  const SignUpForm({
-    super.key,
-    required this.onSwitchToLogin,
-  });
+  const SignUpForm({super.key, required this.onSwitchToLogin});
 
   @override
   State<SignUpForm> createState() => _SignUpFormState();
@@ -24,7 +22,6 @@ class _SignUpFormState extends State<SignUpForm> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  UserRole _selectedRole = UserRole.advertiser;
   bool _acceptTerms = false;
   bool _isLoading = false;
   String _passwordText = '';
@@ -44,7 +41,9 @@ class _SignUpFormState extends State<SignUpForm> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             backgroundColor: Color(0xFFD32F2F),
-            content: Text('Please accept the Terms of Service & Privacy Policy to continue.'),
+            content: Text(
+              'Please accept the Terms of Service & Privacy Policy to continue.',
+            ),
           ),
         );
         return;
@@ -52,34 +51,59 @@ class _SignUpFormState extends State<SignUpForm> {
 
       setState(() => _isLoading = true);
 
-      // Simulate API network request
-      await Future.delayed(const Duration(seconds: 2));
-
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppTheme.cardDark,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: AppTheme.goldPrimary),
-            ),
-            content: Row(
-              children: const [
-                Icon(Icons.stars_rounded, color: AppTheme.goldLight),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'SmartAds account created successfully!',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-          ),
+      try {
+        await AuthService().register(
+          fullName: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+          role: 'ADVERTISER',
         );
-        widget.onSwitchToLogin();
+
+        if (mounted) {
+          setState(() => _isLoading = false);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppTheme.cardDark,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: AppTheme.accentPrimary),
+              ),
+              content: Row(
+                children: const [
+                  Icon(Icons.waving_hand_rounded, color: AppTheme.accentLight),
+                  SizedBox(width: 12),
+                  Text(
+                    'Welcome to SmartAds!',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  const MainNavigationScreen(isNewRegistration: true),
+            ),
+          );
+        }
+      } catch (err) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.red.shade900,
+              content: Text('Registration failed: ${err.toString()}'),
+            ),
+          );
+        }
       }
     }
   }
@@ -103,19 +127,7 @@ class _SignUpFormState extends State<SignUpForm> {
           const SizedBox(height: 6),
           const Text(
             ' SmartAds to publish ad campaigns or monetize digital screens.',
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Role Selector
-          RoleSelector(
-            selectedRole: _selectedRole,
-            onRoleChanged: (role) {
-              setState(() => _selectedRole = role);
-            },
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 24),
 
@@ -145,7 +157,9 @@ class _SignUpFormState extends State<SignUpForm> {
               if (value == null || value.trim().isEmpty) {
                 return 'Please enter your email address';
               }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
+              if (!RegExp(
+                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+              ).hasMatch(value.trim())) {
                 return 'Please enter a valid email address';
               }
               return null;
@@ -162,6 +176,7 @@ class _SignUpFormState extends State<SignUpForm> {
             isPassword: true,
             onChanged: (val) {
               setState(() => _passwordText = val);
+              _formKey.currentState?.validate();
             },
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -186,6 +201,7 @@ class _SignUpFormState extends State<SignUpForm> {
             prefixIcon: Icons.lock_reset_rounded,
             isPassword: true,
             textInputAction: TextInputAction.done,
+            onChanged: (_) => _formKey.currentState?.validate(),
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Please confirm your password';
@@ -207,10 +223,10 @@ class _SignUpFormState extends State<SignUpForm> {
                 height: 24,
                 child: Checkbox(
                   value: _acceptTerms,
-                  activeColor: AppTheme.goldPrimary,
+                  activeColor: AppTheme.accentPrimary,
                   checkColor: Colors.black,
                   side: BorderSide(
-                    color: AppTheme.goldPrimary.withValues(alpha: 0.5),
+                    color: AppTheme.accentPrimary.withValues(alpha: 0.5),
                     width: 1.5,
                   ),
                   shape: RoundedRectangleBorder(
@@ -225,13 +241,16 @@ class _SignUpFormState extends State<SignUpForm> {
               Expanded(
                 child: RichText(
                   text: TextSpan(
-                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                    ),
                     children: const [
                       TextSpan(text: 'I agree to SmartAds '),
                       TextSpan(
                         text: 'Terms of Service',
                         style: TextStyle(
-                          color: AppTheme.goldLight,
+                          color: AppTheme.accentLight,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -239,7 +258,7 @@ class _SignUpFormState extends State<SignUpForm> {
                       TextSpan(
                         text: 'Privacy Policy',
                         style: TextStyle(
-                          color: AppTheme.goldLight,
+                          color: AppTheme.accentLight,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -252,7 +271,7 @@ class _SignUpFormState extends State<SignUpForm> {
           const SizedBox(height: 28),
 
           // Submit CTA Button
-          GoldButton(
+          PrimaryButton(
             text: 'CREATE ACCOUNT',
             icon: Icons.person_add_rounded,
             isLoading: _isLoading,
@@ -275,7 +294,7 @@ class _SignUpFormState extends State<SignUpForm> {
                   child: const Text(
                     'Sign In',
                     style: TextStyle(
-                      color: AppTheme.goldLight,
+                      color: AppTheme.accentLight,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),

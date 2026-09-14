@@ -6,8 +6,29 @@ const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
 
-// Middlewares
-app.use(cors());
+// CORS — allow Flutter web (localhost any port), Android emulator, and desktop
+const allowedOrigins = [
+  /^http:\/\/localhost(:\d+)?$/,      // Flutter web & desktop dev
+  /^http:\/\/127\.0\.0\.1(:\d+)?$/,  // Loopback alias
+  /^http:\/\/10\.0\.2\.2(:\d+)?$/,   // Android emulator → host machine
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    const allowed = allowedOrigins.some((pattern) => pattern.test(origin));
+    if (allowed) return callback(null, true);
+    callback(new Error(`CORS blocked: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+// Handle pre-flight OPTIONS for all routes (Express 5 compatible wildcard)
+app.options('/{*path}', cors());
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

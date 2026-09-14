@@ -31,7 +31,7 @@ class PasswordStrengthWidget extends StatelessWidget {
   Color _getStrengthColor(double strength) {
     if (strength <= 0.3) return const Color(0xFFFF5252);
     if (strength <= 0.7) return const Color(0xFFFFB74D);
-    return AppTheme.goldLight;
+    return AppTheme.accentLight;
   }
 
   @override
@@ -83,7 +83,7 @@ class PasswordStrengthWidget extends StatelessWidget {
                   boxShadow: isFilled && strength > 0.7
                       ? [
                           BoxShadow(
-                            color: AppTheme.goldPrimary.withValues(alpha: 0.4),
+                            color: AppTheme.accentPrimary.withValues(alpha: 0.4),
                             blurRadius: 4,
                           ),
                         ]

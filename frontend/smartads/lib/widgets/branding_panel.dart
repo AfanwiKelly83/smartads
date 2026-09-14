@@ -16,10 +16,10 @@ class BrandingHeader extends StatelessWidget {
           height: isCompact ? 56 : 72,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: AppTheme.goldGradient,
+            gradient: AppTheme.primaryGradient,
             boxShadow: [
               BoxShadow(
-                color: AppTheme.goldPrimary.withValues(alpha: 0.35),
+                color: AppTheme.accentPrimary.withValues(alpha: 0.35),
                 blurRadius: 20,
                 spreadRadius: 2,
               ),
@@ -35,7 +35,7 @@ class BrandingHeader extends StatelessWidget {
               ),
               child: Icon(
                 Icons.campaign_rounded,
-                color: AppTheme.goldLight,
+                color: AppTheme.accentLight,
                 size: isCompact ? 28 : 36,
               ),
             ),
@@ -43,7 +43,7 @@ class BrandingHeader extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         ShaderMask(
-          shaderCallback: (bounds) => AppTheme.goldGradient.createShader(bounds),
+          shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
           child: Text(
             'SmartAds',
             style: TextStyle(
@@ -80,7 +80,7 @@ class DesktopBrandingPanel extends StatelessWidget {
         gradient: AppTheme.darkCardGradient,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: AppTheme.goldPrimary.withValues(alpha: 0.25),
+          color: AppTheme.accentPrimary.withValues(alpha: 0.25),
           width: 1,
         ),
         boxShadow: [
@@ -108,11 +108,11 @@ class DesktopBrandingPanel extends StatelessWidget {
                 color: AppTheme.cardDark,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: AppTheme.goldPrimary.withValues(alpha: 0.3),
+                  color: AppTheme.accentPrimary.withValues(alpha: 0.3),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.goldPrimary.withValues(alpha: 0.15),
+                    color: AppTheme.accentPrimary.withValues(alpha: 0.15),
                     blurRadius: 25,
                     spreadRadius: -5,
                   ),
@@ -138,7 +138,7 @@ class DesktopBrandingPanel extends StatelessWidget {
                           const Text(
                             'LIVE BILLBOARD #408',
                             style: TextStyle(
-                              color: AppTheme.goldLight,
+                              color: AppTheme.accentLight,
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.8,
@@ -149,13 +149,13 @@ class DesktopBrandingPanel extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: AppTheme.goldPrimary.withValues(alpha: 0.15),
+                          color: AppTheme.accentPrimary.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text(
                           '4K ULTRA HD',
                           style: TextStyle(
-                            color: AppTheme.goldPrimary,
+                            color: AppTheme.accentPrimary,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
@@ -166,54 +166,67 @@ class DesktopBrandingPanel extends StatelessWidget {
                   const SizedBox(height: 16),
                   // Mock Screen Display
                   Container(
-                    height: 180,
+                    height: 190,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: LinearGradient(
-                        colors: [
-                          AppTheme.goldDark.withValues(alpha: 0.4),
-                          AppTheme.bgDark,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      border: Border.all(
-                        color: AppTheme.borderGold,
-                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppTheme.borderSubtle),
                     ),
-                    child: Stack(
-                      children: [
-                        Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.ads_click_rounded,
-                                size: 48,
-                                color: AppTheme.goldLight.withValues(alpha: 0.8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.network(
+                            'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop',
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              color: AppTheme.cardDark,
+                              child: const Center(
+                                child: Icon(Icons.tv_rounded, size: 60, color: AppTheme.accentLight),
                               ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Maximize Brand Reach',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Dynamic Content Scheduling',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondary.withValues(alpha: 0.8),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.black.withValues(alpha: 0.1),
+                                  Colors.black.withValues(alpha: 0.7),
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                            ),
+                          ),
+                          const Positioned(
+                            bottom: 12,
+                            left: 12,
+                            right: 12,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Street Digital Billboard Display',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Urban Highway Location • AI Verified',
+                                  style: TextStyle(
+                                    color: AppTheme.accentLight,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -254,15 +267,15 @@ class DesktopBrandingPanel extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppTheme.goldPrimary.withValues(alpha: 0.12),
+            color: AppTheme.accentPrimary.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: AppTheme.goldPrimary.withValues(alpha: 0.2),
+              color: AppTheme.accentPrimary.withValues(alpha: 0.2),
             ),
           ),
           child: Icon(
             icon,
-            color: AppTheme.goldLight,
+            color: AppTheme.accentLight,
             size: 20,
           ),
         ),

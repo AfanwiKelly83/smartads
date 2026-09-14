@@ -16,6 +16,7 @@ afterAll(async () => {
 describe('SMARTADS Backend Authentication API Test Suite', () => {
   let adminToken = '';
   let advertiserToken = '';
+  let userToken = '';
   let advertiserEmail = 'advertiser.flutter@smartads.com';
 
   test('1. Register successfully', async () => {
@@ -121,6 +122,46 @@ describe('SMARTADS Backend Authentication API Test Suite', () => {
     expect(res.body.data.password).toBeUndefined();
   });
 
+  test('8a. PUT /api/v1/auth/me updates profile fields -> HTTP 200 OK', async () => {
+    const res = await request(app)
+      .put('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${advertiserToken}`)
+      .send({
+        fullName: 'Flutter Advertiser Updated',
+        phoneNumber: '+237670000199'
+      });
+
+    expect(res.statusCode).toEqual(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toContain('Profile updated');
+    expect(res.body.data.fullName).toEqual('Flutter Advertiser Updated');
+    expect(res.body.data.phoneNumber).toEqual('+237670000199');
+  });
+
+  test('8b. POST /api/v1/auth/change-password requires current password and updates hash -> HTTP 200 OK', async () => {
+    const changePasswordRes = await request(app)
+      .post('/api/v1/auth/change-password')
+      .set('Authorization', `Bearer ${advertiserToken}`)
+      .send({
+        currentPassword: 'Password123!',
+        newPassword: 'NewPassword456!'
+      });
+
+    expect(changePasswordRes.statusCode).toEqual(200);
+    expect(changePasswordRes.body.success).toBe(true);
+    expect(changePasswordRes.body.message).toContain('Password changed');
+
+    const loginRes = await request(app)
+      .post('/api/v1/auth/login')
+      .send({
+        email: advertiserEmail,
+        password: 'NewPassword456!'
+      });
+
+    expect(loginRes.statusCode).toEqual(200);
+    expect(loginRes.body.success).toBe(true);
+  });
+
   test('9. Admin authorization check', async () => {
     // Register Admin
     const adminRes = await request(app)
@@ -159,5 +200,32 @@ describe('SMARTADS Backend Authentication API Test Suite', () => {
 
     expect(res.statusCode).toEqual(403);
     expect(res.body.success).toBe(false);
+  });
+
+  test('11. Normal user receives USER role and cannot create campaigns or bookings', async () => {
+    const registerRes = await request(app)
+      .post('/api/v1/auth/register')
+      .send({
+        fullName: 'Normal User',
+        email: 'user.flutter@smartads.com',
+        password: 'UserPassword123!',
+        role: 'USER'
+      });
+
+    expect(registerRes.statusCode).toEqual(201);
+    expect(registerRes.body.data.user.role).toEqual('USER');
+    userToken = registerRes.body.data.token;
+
+    const campaignRes = await request(app)
+      .post('/api/v1/campaigns')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({});
+    expect(campaignRes.statusCode).toEqual(403);
+
+    const bookingRes = await request(app)
+      .post('/api/v1/bookings')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({});
+    expect(bookingRes.statusCode).toEqual(403);
   });
 });

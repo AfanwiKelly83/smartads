@@ -29,8 +29,13 @@ const User = sequelize.define('User', {
     allowNull: false
   },
   role: {
-    type: DataTypes.ENUM('ADMIN', 'ADVERTISER'),
-    defaultValue: 'ADVERTISER',
+    type: DataTypes.ENUM('ADMIN', 'ADVERTISER', 'BILLBOARD_OWNER', 'USER'),
+    defaultValue: 'USER',
+    allowNull: false
+  },
+  accountStatus: {
+    type: DataTypes.ENUM('ACTIVE', 'SUSPENDED', 'BLOCKED'),
+    defaultValue: 'ACTIVE',
     allowNull: false
   }
 }, {

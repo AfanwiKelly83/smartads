@@ -39,6 +39,18 @@ const Advertisement = sequelize.define('Advertisement', {
     type: DataTypes.ENUM('PENDING', 'APPROVED', 'REJECTED'),
     defaultValue: 'PENDING'
   },
+  verificationNotes: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  aiConfidenceScore: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
+  aiFlaggedReason: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   playStartTime: {
     type: DataTypes.STRING,
     allowNull: true

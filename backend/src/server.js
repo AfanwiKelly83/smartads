@@ -7,11 +7,16 @@ dotenv.config();
 
 const PORT = process.env.PORT || 3000;
 
+// Server bootstrap
 const startServer = async () => {
   try {
     // Auto-create database if not exists
     if (typeof sequelize.ensureDatabaseExists === 'function') {
       await sequelize.ensureDatabaseExists();
+    }
+
+    if (typeof sequelize.ensureUserRoleValues === 'function') {
+      await sequelize.ensureUserRoleValues();
     }
 
     // Authenticate database connection
@@ -20,6 +25,9 @@ const startServer = async () => {
 
     // Synchronize Sequelize Models with Database
     await sequelize.sync();
+    if (typeof sequelize.ensureAdvertisementColumns === 'function') {
+      await sequelize.ensureAdvertisementColumns();
+    }
     console.log('Database schema synchronized successfully');
 
     // Start background cron jobs (running every 60 seconds)

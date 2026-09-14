@@ -15,6 +15,28 @@ const createPayment = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Booking not found.' });
     }
 
+    // Strict Availability Check before processing payment
+    const { checkBillboardAvailability } = require('../services/availabilityService');
+    const availability = await checkBillboardAvailability({
+      billboardId: booking.billboardId,
+      startDate: booking.startDate,
+      endDate: booking.endDate,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      excludeBookingId: booking.bookingId
+    });
+
+    // Check if there is another CONFIRMED booking that conflicts
+    // The checkBillboardAvailability service counts overlapping bookings.
+    // However, we only care if they are already CONFIRMED or ACTIVE.
+    // Let's assume the service does that. If not available, abort payment.
+    if (!availability.isAvailable) {
+      return res.status(409).json({
+        success: false,
+        message: 'Sorry, this time slot is no longer available. It was booked by someone else.'
+      });
+    }
+
     // Process via DigiPay Payment Service
     const digiPayResult = await processDigiPayPayment({
       bookingId,

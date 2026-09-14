@@ -1,5 +1,19 @@
 const { Booking, Billboard, Campaign, User } = require('../models');
-const { checkBillboardAvailability } = require('../services/availabilityService');
+const { checkBillboardAvailability, getBillboardTimeSlots } = require('../services/availabilityService');
+
+// GET /api/v1/bookings/availability/:billboardId?date=YYYY-MM-DD
+const getBillboardAvailability = async (req, res, next) => {
+  try {
+    const date = req.query.date || new Date().toISOString().slice(0, 10);
+    const slots = await getBillboardTimeSlots({
+      billboardId: Number(req.params.billboardId),
+      date
+    });
+    return res.json({ success: true, data: slots, date });
+  } catch (err) {
+    next(err);
+  }
+};
 
 // POST /api/v1/bookings
 const createBooking = async (req, res, next) => {
@@ -123,5 +137,6 @@ const getBookingById = async (req, res, next) => {
 module.exports = {
   createBooking,
   getAllBookings,
-  getBookingById
+  getBookingById,
+  getBillboardAvailability
 };

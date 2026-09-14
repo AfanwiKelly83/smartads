@@ -3,18 +3,27 @@ import '../theme/app_theme.dart';
 import '../widgets/branding_panel.dart';
 import '../widgets/login_form.dart';
 import '../widgets/signup_form.dart';
+import '../widgets/video_background.dart';
 
 enum AuthMode { login, register }
 
 class AuthPage extends StatefulWidget {
-  const AuthPage({super.key});
+  final AuthMode initialMode;
+
+  const AuthPage({super.key, this.initialMode = AuthMode.login});
 
   @override
   State<AuthPage> createState() => _AuthPageState();
 }
 
 class _AuthPageState extends State<AuthPage> {
-  AuthMode _authMode = AuthMode.login;
+  late AuthMode _authMode;
+
+  @override
+  void initState() {
+    super.initState();
+    _authMode = widget.initialMode;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,76 +32,42 @@ class _AuthPageState extends State<AuthPage> {
 
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
-      body: Stack(
-        children: [
-          // Background ambient golden glow effects
-          Positioned(
-            top: -100,
-            left: -100,
-            child: Container(
-              width: 350,
-              height: 350,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.goldPrimary.withValues(alpha: 0.07),
+      body: VideoBackground(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isDesktop ? 1100 : 480),
+                child: isDesktop
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Left Column: Desktop Branding Showcase Panel
+                          const Expanded(
+                            flex: 5,
+                            child: DesktopBrandingPanel(),
+                          ),
+                          const SizedBox(width: 48),
+
+                          // Right Column: Auth Card
+                          Expanded(flex: 6, child: _buildAuthCard()),
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          // Mobile Top Header
+                          const BrandingHeader(isCompact: true),
+                          const SizedBox(height: 32),
+
+                          // Auth Card
+                          _buildAuthCard(),
+                        ],
+                      ),
               ),
             ),
           ),
-          Positioned(
-            bottom: -150,
-            right: -100,
-            child: Container(
-              width: 450,
-              height: 450,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.goldLight.withValues(alpha: 0.05),
-              ),
-            ),
-          ),
-
-          // Main Responsive Content
-          SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: isDesktop ? 1100 : 480,
-                  ),
-                  child: isDesktop
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // Left Column: Desktop Branding Showcase Panel
-                            const Expanded(
-                              flex: 5,
-                              child: DesktopBrandingPanel(),
-                            ),
-                            const SizedBox(width: 48),
-
-                            // Right Column: Auth Card
-                            Expanded(
-                              flex: 6,
-                              child: _buildAuthCard(),
-                            ),
-                          ],
-                        )
-                      : Column(
-                          children: [
-                            // Mobile Top Header
-                            const BrandingHeader(isCompact: true),
-                            const SizedBox(height: 32),
-
-                            // Auth Card
-                            _buildAuthCard(),
-                          ],
-                        ),
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -104,7 +79,7 @@ class _AuthPageState extends State<AuthPage> {
         color: AppTheme.surfaceDark,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: AppTheme.goldPrimary.withValues(alpha: 0.25),
+          color: AppTheme.accentPrimary.withValues(alpha: 0.25),
           width: 1,
         ),
         boxShadow: [
@@ -114,7 +89,7 @@ class _AuthPageState extends State<AuthPage> {
             offset: const Offset(0, 15),
           ),
           BoxShadow(
-            color: AppTheme.goldPrimary.withValues(alpha: 0.08),
+            color: AppTheme.accentPrimary.withValues(alpha: 0.08),
             blurRadius: 20,
             spreadRadius: -2,
           ),
@@ -167,23 +142,15 @@ class _AuthPageState extends State<AuthPage> {
       decoration: BoxDecoration(
         color: AppTheme.inputBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppTheme.borderGold.withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: AppTheme.borderSubtle.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
           Expanded(
-            child: _buildTabButton(
-              title: 'Login',
-              mode: AuthMode.login,
-            ),
+            child: _buildTabButton(title: 'Login', mode: AuthMode.login),
           ),
           Expanded(
-            child: _buildTabButton(
-              title: 'Register',
-              mode: AuthMode.register,
-            ),
+            child: _buildTabButton(title: 'Register', mode: AuthMode.register),
           ),
         ],
       ),
@@ -203,10 +170,10 @@ class _AuthPageState extends State<AuthPage> {
         decoration: BoxDecoration(
           color: isSelected ? AppTheme.cardDark : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
-          gradient: isSelected ? AppTheme.goldSubtleGradient : null,
+          gradient: isSelected ? AppTheme.subtleGradient : null,
           border: isSelected
               ? Border.all(
-                  color: AppTheme.goldPrimary.withValues(alpha: 0.5),
+                  color: AppTheme.accentPrimary.withValues(alpha: 0.5),
                   width: 1,
                 )
               : null,
@@ -215,7 +182,7 @@ class _AuthPageState extends State<AuthPage> {
           child: Text(
             title,
             style: TextStyle(
-              color: isSelected ? AppTheme.goldLight : AppTheme.textSecondary,
+              color: isSelected ? AppTheme.accentLight : AppTheme.textSecondary,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               fontSize: 15,
               letterSpacing: 0.4,

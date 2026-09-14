@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
-import 'screens/auth_page.dart';
+import 'screens/splash_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const SmartAdsApp());
 }
 
@@ -15,7 +16,7 @@ class SmartAdsApp extends StatelessWidget {
       title: 'SmartAds Platform',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      home: const AuthPage(),
+      home: const SplashScreen(),
     );
   }
 }
