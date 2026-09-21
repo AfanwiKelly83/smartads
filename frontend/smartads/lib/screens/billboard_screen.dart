@@ -4,6 +4,7 @@ import '../models/billboard_model.dart';
 import '../services/billboard_service.dart';
 import '../widgets/billboard_card.dart';
 import '../widgets/booking_flow.dart';
+import '../widgets/billboard_map_view.dart';
 import 'owner/add_billboard_screen.dart';
 import '../services/auth_service.dart';
 import '../widgets/role_guard.dart';
@@ -21,6 +22,7 @@ class _BillboardScreenState extends State<BillboardScreen>
   bool _isLoading = true;
   String _searchQuery = '';
   String _filterStatus = 'ALL'; // 'ALL', 'ACTIVE', 'AVAILABLE'
+  bool _isMapView = false; // Toggle between Grid View & Map View
 
   @override
   void initState() {
@@ -117,7 +119,7 @@ class _BillboardScreenState extends State<BillboardScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Digital Billboard Directory & QR Codes',
+          'Digital Billboard Directory & Map',
           style: TextStyle(
             color: Colors.white,
             fontSize: 26,
@@ -126,10 +128,88 @@ class _BillboardScreenState extends State<BillboardScreen>
         ),
         SizedBox(height: 4),
         Text(
-          'Explore available digital billboards, view screen specs, and inspect location QR codes.',
+          'Search digital screens, inspect physical GPS positions on the map, and book broadcast slots.',
           style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
         ),
       ],
+    );
+  }
+
+  Widget _buildViewToggle() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceDark,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppTheme.borderSubtle.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Grid View Button
+          InkWell(
+            borderRadius: const BorderRadius.horizontal(left: Radius.circular(13)),
+            onTap: () => setState(() => _isMapView = false),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: !_isMapView ? AppTheme.accentPrimary : Colors.transparent,
+                borderRadius: const BorderRadius.horizontal(left: Radius.circular(13)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.grid_view_rounded,
+                    size: 16,
+                    color: !_isMapView ? Colors.white : AppTheme.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Grid',
+                    style: TextStyle(
+                      color: !_isMapView ? Colors.white : AppTheme.textSecondary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Map View Button
+          InkWell(
+            borderRadius: const BorderRadius.horizontal(right: Radius.circular(13)),
+            onTap: () => setState(() => _isMapView = true),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: _isMapView ? AppTheme.accentPrimary : Colors.transparent,
+                borderRadius: const BorderRadius.horizontal(right: Radius.circular(13)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.map_rounded,
+                    size: 16,
+                    color: _isMapView ? Colors.white : AppTheme.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Map View',
+                    style: TextStyle(
+                      color: _isMapView ? Colors.white : AppTheme.textSecondary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -138,7 +218,7 @@ class _BillboardScreenState extends State<BillboardScreen>
       onPressed: _openAddBillboardScreen,
       icon: const Icon(Icons.add_location_alt_rounded, color: Colors.white),
       label: const Text(
-        'ADD BILLBOARD & QR',
+        'ADD BILLBOARD',
         style: TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.bold,
@@ -147,7 +227,7 @@ class _BillboardScreenState extends State<BillboardScreen>
       ),
       style: ElevatedButton.styleFrom(
         backgroundColor: AppTheme.accentPrimary,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
@@ -159,7 +239,7 @@ class _BillboardScreenState extends State<BillboardScreen>
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.accentLight),
-        hintText: 'Search billboard by name or location...',
+        hintText: 'Search billboard by name or city (Douala, Yaoundé, Buea...)...',
         hintStyle: const TextStyle(color: AppTheme.textMuted),
         filled: true,
         fillColor: AppTheme.surfaceDark,
@@ -217,16 +297,18 @@ class _BillboardScreenState extends State<BillboardScreen>
   @override
   Widget build(BuildContext context) {
     final filteredBillboards = _billboards.where((b) {
+      final query = _searchQuery.toLowerCase();
       final matchesSearch =
-          b.billboardName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          b.location.toLowerCase().contains(_searchQuery.toLowerCase());
+          b.billboardName.toLowerCase().contains(query) ||
+          b.location.toLowerCase().contains(query) ||
+          b.billboardCode.toLowerCase().contains(query);
       if (_filterStatus == 'ALL') return matchesSearch;
       if (_filterStatus == 'ACTIVE') {
         return matchesSearch && b.status.toUpperCase() == 'ACTIVE';
       }
       return matchesSearch && b.availabilityStatus == 'AVAILABLE';
     }).toList();
-    final isCompact = MediaQuery.of(context).size.width < 600;
+    final isCompact = MediaQuery.of(context).size.width < 750;
 
     return RoleGuard(
       allowedRoles: RoleAccess.adminAndAdvertiser,
@@ -248,17 +330,29 @@ class _BillboardScreenState extends State<BillboardScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildPageHeading(),
-                          if (_canManageBillboards) ...[
-                            const SizedBox(height: 16),
-                            _buildAddBillboardButton(),
-                          ],
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              _buildViewToggle(),
+                              const Spacer(),
+                              if (_canManageBillboards) _buildAddBillboardButton(),
+                            ],
+                          ),
                         ],
                       )
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(child: _buildPageHeading()),
-                          if (_canManageBillboards) _buildAddBillboardButton(),
+                          Row(
+                            children: [
+                              _buildViewToggle(),
+                              if (_canManageBillboards) ...[
+                                const SizedBox(width: 12),
+                                _buildAddBillboardButton(),
+                              ],
+                            ],
+                          ),
                         ],
                       ),
                 const SizedBox(height: 24),
@@ -269,7 +363,11 @@ class _BillboardScreenState extends State<BillboardScreen>
                         children: [
                           _buildSearchField(),
                           const SizedBox(height: 12),
-                          _buildFilterDropdown(),
+                          Row(
+                            children: [
+                              Expanded(child: _buildFilterDropdown()),
+                            ],
+                          ),
                         ],
                       )
                     : Row(
@@ -281,7 +379,7 @@ class _BillboardScreenState extends State<BillboardScreen>
                       ),
                 const SizedBox(height: 28),
 
-                // Content Body (Loading, Empty, or Grid)
+                // Content Body (Loading, Empty, Map View, or Grid)
                 if (_isLoading)
                   const Padding(
                     padding: EdgeInsets.all(60.0),
@@ -320,7 +418,7 @@ class _BillboardScreenState extends State<BillboardScreen>
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          'Try clearing search filters or click "Add Billboard" to create one.',
+                          'Try clearing search filters or check your spelling.',
                           style: TextStyle(
                             color: AppTheme.textSecondary,
                             fontSize: 13,
@@ -329,7 +427,31 @@ class _BillboardScreenState extends State<BillboardScreen>
                       ],
                     ),
                   )
+                else if (_isMapView)
+                  // Map Visualization View
+                  Container(
+                    height: 580,
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceDark,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppTheme.accentPrimary.withValues(alpha: 0.3),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.4),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: BillboardMapView(
+                      billboards: filteredBillboards,
+                      onBookBillboard: _handleBooking,
+                    ),
+                  )
                 else
+                  // Grid View
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final width = constraints.maxWidth;
@@ -348,7 +470,7 @@ class _BillboardScreenState extends State<BillboardScreen>
                           crossAxisCount: crossAxisCount,
                           crossAxisSpacing: 20,
                           mainAxisSpacing: 20,
-                          childAspectRatio: 0.88,
+                          childAspectRatio: 0.85,
                         ),
                         itemBuilder: (context, index) {
                           final billboard = filteredBillboards[index];

@@ -41,6 +41,12 @@ dependencies:
   file_saver: ^0.4.0
   mobile_scanner: ^7.0.1
   video_player: ^2.8.2
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
+  url_launcher: ^6.3.2
+  google_maps_flutter: ^2.18.0
+  google_maps_flutter_web: ^0.6.3+1
+  file_picker: ^13.1.0
 
 dev_dependencies:
   flutter_test:

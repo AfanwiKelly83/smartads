@@ -26,9 +26,11 @@ Booking.belongsTo(User, { foreignKey: 'advertiserId', targetKey: 'userId', as: '
 User.hasMany(Notification, { foreignKey: 'userId', sourceKey: 'userId', as: 'notifications' });
 Notification.belongsTo(User, { foreignKey: 'userId', targetKey: 'userId', as: 'user' });
 
-// 5. User -> Billboard (1 : 0..* Admin creator)
+// 5. User -> Billboard (1 : 0..* Owner / Admin creator)
 User.hasMany(Billboard, { foreignKey: 'createdBy', sourceKey: 'userId', as: 'createdBillboards' });
 Billboard.belongsTo(User, { foreignKey: 'createdBy', targetKey: 'userId', as: 'creator' });
+User.hasMany(Billboard, { foreignKey: 'ownerId', sourceKey: 'userId', as: 'billboards' });
+Billboard.belongsTo(User, { foreignKey: 'ownerId', targetKey: 'userId', as: 'owner' });
 
 // 6. Billboard -> Booking (1 : 0..*)
 Billboard.hasMany(Booking, { foreignKey: 'billboardId', sourceKey: 'billboardId', as: 'bookings' });

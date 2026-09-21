@@ -11,6 +11,7 @@ const paymentRoutes = require('./paymentRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const analyticsRoutes = require('./analyticsRoutes');
 const iotRoutes = require('./iotRoutes');
+const configRoutes = require('./configRoutes');
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
@@ -22,5 +23,6 @@ router.use('/payments', paymentRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/iot', iotRoutes);
+router.use('/config', configRoutes);
 
 module.exports = router;

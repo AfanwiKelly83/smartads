@@ -102,6 +102,7 @@ class AppTheme {
 extension ColorWithValues on Color {
   Color withValues({double? alpha}) {
     if (alpha == null) return this;
-    return withOpacity(alpha.clamp(0.0, 1.0));
+    return withValues(alpha: alpha.clamp(0.0, 1.0));
   }
 }
+

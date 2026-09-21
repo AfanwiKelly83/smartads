@@ -62,7 +62,10 @@ class RoleGuard extends StatelessWidget {
 class RoleAccess {
   static const admin = <String>{'ADMIN'};
   static const advertiser = <String>{'ADVERTISER', 'USER'};
+  static const billboardOwner = <String>{'BILLBOARD_OWNER', 'OWNER'};
+  static const adminAndOwner = <String>{'ADMIN', 'BILLBOARD_OWNER', 'OWNER'};
   static const adminAndAdvertiser = <String>{'ADMIN', 'ADVERTISER', 'USER'};
+  static const all = <String>{'ADMIN', 'ADVERTISER', 'USER', 'BILLBOARD_OWNER', 'OWNER'};
 
   static bool canAccess(User? user, Set<String> roles) {
     return user != null && roles.contains(user.role);

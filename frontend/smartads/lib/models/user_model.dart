@@ -21,7 +21,7 @@ class UserModel {
     return UserModel(
       userId: json['userId'] is int
           ? json['userId']
-          : int.parse(json['userId'].toString()),
+          : int.tryParse(json['userId']?.toString() ?? '1') ?? 1,
       fullName: json['fullName'] ?? '',
       email: json['email'] ?? '',
       phoneNumber: json['phoneNumber'],

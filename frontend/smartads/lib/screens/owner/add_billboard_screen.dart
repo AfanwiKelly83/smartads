@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:http/http.dart' as http;
 import '../../utils/app_colors.dart';
@@ -19,19 +19,39 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _locationController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _descriptionController = TextEditingController();
   final _rateController = TextEditingController(text: '15000');
-  final _sizeController = TextEditingController(text: '4K UHD (3840x2160)');
+  final _sizeController = TextEditingController(text: 'Smart TV HD (1920x1080)');
+  final _widthController = TextEditingController(text: '1920');
+  final _heightController = TextEditingController(text: '1080');
+  final _resolutionController = TextEditingController(text: '1920x1080');
+  final _operatingHoursController = TextEditingController(text: '06:00 - 22:00');
+  final _imageUrlController = TextEditingController();
+  final _videoUrlController = TextEditingController();
+  final _technicalSpecsController = TextEditingController();
   final _latController = TextEditingController(text: '4.0511');
   final _lngController = TextEditingController(text: '9.7679');
+  String _billboardType = 'SMART_TV';
 
   bool _isSubmitting = false;
+  bool _showAdvanced = false;
 
   @override
   void dispose() {
     _nameController.dispose();
     _locationController.dispose();
+    _addressController.dispose();
+    _descriptionController.dispose();
     _rateController.dispose();
     _sizeController.dispose();
+    _widthController.dispose();
+    _heightController.dispose();
+    _resolutionController.dispose();
+    _operatingHoursController.dispose();
+    _imageUrlController.dispose();
+    _videoUrlController.dispose();
+    _technicalSpecsController.dispose();
     _latController.dispose();
     _lngController.dispose();
     super.dispose();
@@ -46,8 +66,30 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
         final billboard = await BillboardService().createBillboard(
           billboardName: _nameController.text.trim(),
           location: _locationController.text.trim(),
+          address: _addressController.text.trim().isNotEmpty
+              ? _addressController.text.trim()
+              : _locationController.text.trim(),
+          description: _descriptionController.text.trim().isNotEmpty
+              ? _descriptionController.text.trim()
+              : 'Digital advertising display available for scheduled campaigns.',
+          billboardType: _billboardType,
+          width: _widthController.text.trim(),
+          height: _heightController.text.trim(),
+          resolution: _resolutionController.text.trim(),
           pricePerHour: rate,
-          screenSize: _sizeController.text.trim(),
+          operatingHours: _operatingHoursController.text.trim(),
+          images: _imageUrlController.text.trim().isNotEmpty
+              ? _imageUrlController.text.trim()
+              : null,
+          videoDemo: _videoUrlController.text.trim().isNotEmpty
+              ? _videoUrlController.text.trim()
+              : null,
+          technicalSpecs: _technicalSpecsController.text.trim().isNotEmpty
+              ? _technicalSpecsController.text.trim()
+              : null,
+          screenSize: _sizeController.text.trim().isNotEmpty
+              ? _sizeController.text.trim()
+              : 'Smart TV HD (1920x1080)',
           latitude: _latController.text.trim(),
           longitude: _lngController.text.trim(),
         );
@@ -84,7 +126,7 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
       }
 
       await FileSaver.instance.saveFile(
-        name: 'smartads_billboard_${billboard.billboardId}',
+        name: 'smartads_${billboard.billboardCode.isNotEmpty ? billboard.billboardCode : billboard.billboardId}',
         bytes: response.bodyBytes,
         fileExtension: 'png',
         mimeType: MimeType.png,
@@ -94,7 +136,7 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: AppColors.surfaceDark,
-          content: Text('QR Code PNG saved successfully.'),
+          content: Text('Billboard QR Code PNG saved successfully.'),
         ),
       );
     } catch (error) {
@@ -108,7 +150,49 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
     }
   }
 
+  Widget _buildPresetChip(
+    String label,
+    String defaultName,
+    String defaultLocation,
+    String lat,
+    String lng,
+  ) {
+    return ActionChip(
+      backgroundColor: AppColors.inputBg,
+      side: BorderSide(
+        color: AppColors.borderSubtle.withValues(alpha: 0.4),
+      ),
+      avatar: const Icon(
+        Icons.tv_rounded,
+        size: 14,
+        color: AppColors.accentLight,
+      ),
+      label: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+        ),
+      ),
+      onPressed: () {
+        setState(() {
+          if (_nameController.text.isEmpty) {
+            _nameController.text = defaultName;
+          }
+          _locationController.text = defaultLocation;
+          _addressController.text = defaultLocation;
+          _latController.text = lat;
+          _lngController.text = lng;
+        });
+      },
+    );
+  }
+
   void _showSuccessAndQR(BillboardModel billboard) {
+    final code = billboard.billboardCode.isNotEmpty
+        ? billboard.billboardCode
+        : 'BILL-${billboard.billboardId}';
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -127,7 +211,7 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
             ),
             SizedBox(width: 10),
             Text(
-              'Billboard & QR Code Created!',
+              'Billboard Registered!',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -140,7 +224,7 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${billboard.billboardName} has been registered! System generated the physical location QR Code. Download and print this label to paste onto the digital billboard structure.',
+                '${billboard.billboardName} ($code) is successfully registered. Status: ${billboard.approvalStatus}. Download and print this QR code to place on your display.',
                 style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 13,
@@ -148,7 +232,7 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
               ),
               const SizedBox(height: 18),
 
-              // Printable Poster Card Layout
+              // Printable Poster Card for the Smart TV / Billboard
               Container(
                 width: 260,
                 padding: const EdgeInsets.all(16),
@@ -176,10 +260,10 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text(
-                        'SMARTADS PHYSICAL DISPLAY',
+                        'SMARTADS • DIGITAL BILLBOARD',
                         style: TextStyle(
                           color: AppColors.accentLight,
-                          fontSize: 10,
+                          fontSize: 9,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.6,
                         ),
@@ -195,13 +279,23 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
                         fontSize: 14,
                       ),
                     ),
-                    Text(
-                      billboard.location,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.black54,
-                        fontSize: 11,
-                      ),
+                    const SizedBox(height: 2),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.location_on, color: Colors.black54, size: 12),
+                        const SizedBox(width: 2),
+                        Flexible(
+                          child: Text(
+                            billboard.location,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.black54,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     Image.network(
@@ -212,27 +306,29 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
                       height: 150,
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.broken_image_outlined,
+                        Icons.qr_code_rounded,
                         color: Colors.black54,
-                        size: 48,
+                        size: 64,
                       ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'SCAN TO ADVERTISE ON THIS SCREEN',
+                      'SCAN WITH SMARTADS APP TO BOOK',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.black87,
                         fontWeight: FontWeight.bold,
-                        fontSize: 10,
+                        fontSize: 9,
                         letterSpacing: 0.5,
                       ),
                     ),
+                    const SizedBox(height: 4),
                     Text(
-                      'Billboard ID #BLB-${billboard.billboardId.toString().padLeft(4, '0')}',
+                      'Billboard ID: $code',
                       style: const TextStyle(
-                        color: Colors.black54,
-                        fontSize: 9,
+                        color: Colors.black,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -283,14 +379,14 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
   @override
   Widget build(BuildContext context) {
     return RoleGuard(
-      allowedRoles: RoleAccess.admin,
+      allowedRoles: RoleAccess.adminAndOwner,
       child: Scaffold(
         backgroundColor: AppColors.bgDark,
         appBar: AppBar(
           backgroundColor: AppColors.surfaceDark,
           elevation: 0,
           title: const Text(
-            'Register New Billboard',
+            'Register Billboard Display',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           leading: IconButton(
@@ -302,7 +398,7 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
           padding: const EdgeInsets.all(24),
           child: Center(
             child: Container(
-              constraints: const BoxConstraints(maxWidth: 650),
+              constraints: const BoxConstraints(maxWidth: 640),
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
                 color: AppColors.surfaceDark,
@@ -310,164 +406,325 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
                 border: Border.all(
                   color: AppColors.accentPrimary.withValues(alpha: 0.3),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.accentPrimary.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.tv_rounded,
+                            color: AppColors.accentLight,
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'ADD DIGITAL BILLBOARD / TV',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                              Text(
+                                'Enter display details. Unique ID (BILL-xxx) & QR will generate automatically.',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Quick TV Location Presets
                     const Text(
-                      'BILLBOARD REGISTRATION & LOCATION DETIALS',
+                      'QUICK LOCATION PRESETS',
                       style: TextStyle(
-                        color: AppColors.accentPrimary,
-                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 0.8,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildPresetChip(
+                            'Akwa Boulevard TV',
+                            'Smart TV #01 - Akwa LED Screen',
+                            'Akwa Boulevard, Douala',
+                            '4.0511',
+                            '9.7679',
+                          ),
+                          const SizedBox(width: 8),
+                          _buildPresetChip(
+                            'Bastos Junction TV',
+                            'Smart TV #02 - Bastos Display',
+                            'Bastos Junction, Yaoundé',
+                            '3.8830',
+                            '11.5120',
+                          ),
+                          const SizedBox(width: 8),
+                          _buildPresetChip(
+                            'Buea Campus TV',
+                            'Smart TV #03 - University Hall Screen',
+                            'Main University Road, Buea',
+                            '4.1560',
+                            '9.2435',
+                          ),
+                          const SizedBox(width: 8),
+                          _buildPresetChip(
+                            'Living Room / Lab TV',
+                            'Smart TV Prototype #01',
+                            'SmartAds IoT Hardware Lab',
+                            '4.0511',
+                            '9.7679',
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 20),
 
-                    // Billboard Name
+                    // Billboard Type Selector
+                    const Text(
+                      'BILLBOARD TYPE',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        ChoiceChip(
+                          label: const Text('SMART TV'),
+                          selected: _billboardType == 'SMART_TV',
+                          selectedColor: AppColors.accentPrimary,
+                          onSelected: (v) => setState(() => _billboardType = 'SMART_TV'),
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: const Text('LED WALL'),
+                          selected: _billboardType == 'LED_DISPLAY',
+                          selectedColor: AppColors.accentPrimary,
+                          onSelected: (v) => setState(() => _billboardType = 'LED_DISPLAY'),
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: const Text('DIGITAL POSTER'),
+                          selected: _billboardType == 'DIGITAL_POSTER',
+                          selectedColor: AppColors.accentPrimary,
+                          onSelected: (v) => setState(() => _billboardType = 'DIGITAL_POSTER'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+
+                    // 1. Billboard / TV Name & ID
                     TextFormField(
                       controller: _nameController,
                       validator: (v) =>
-                          Validators.validateRequired(v, 'Billboard Name'),
+                          Validators.validateRequired(v, 'Billboard Name / ID'),
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
-                        labelText: 'Billboard Name *',
-                        labelStyle: const TextStyle(
-                          color: AppColors.textSecondary,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.tv_rounded,
-                          color: AppColors.accentLight,
-                        ),
+                        labelText: 'Billboard Name / Identifier *',
+                        hintText: 'e.g. Smart TV #01 - Living Room Prototype',
+                        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        labelStyle: const TextStyle(color: AppColors.textSecondary),
+                        prefixIcon: const Icon(Icons.tv_rounded, color: AppColors.accentLight),
                         filled: true,
                         fillColor: AppColors.inputBg,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
 
-                    // Location
+                    // 2. Physical Location
                     TextFormField(
                       controller: _locationController,
                       validator: (v) =>
-                          Validators.validateRequired(v, 'Location Address'),
+                          Validators.validateRequired(v, 'City / Physical Location'),
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
-                        labelText: 'Location / City Address *',
-                        labelStyle: const TextStyle(
-                          color: AppColors.textSecondary,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.location_on_rounded,
-                          color: AppColors.accentLight,
-                        ),
+                        labelText: 'City / Region *',
+                        hintText: 'e.g. Douala, Cameroon / Bastos, Yaoundé',
+                        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        labelStyle: const TextStyle(color: AppColors.textSecondary),
+                        prefixIcon: const Icon(Icons.location_city_rounded, color: AppColors.accentLight),
                         filled: true,
                         fillColor: AppColors.inputBg,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
 
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _rateController,
-                            keyboardType: TextInputType.number,
-                            validator: (v) =>
-                                Validators.validateRequired(v, 'Hourly Rate'),
-                            style: const TextStyle(color: Colors.white),
-                            decoration: InputDecoration(
-                              labelText: 'Rate (FCFA / hr) *',
-                              labelStyle: const TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                              prefixIcon: const Icon(
-                                Icons.payments_rounded,
-                                color: AppColors.accentLight,
-                              ),
-                              filled: true,
-                              fillColor: AppColors.inputBg,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _sizeController,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: InputDecoration(
-                              labelText: 'Screen Resolution',
-                              labelStyle: const TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                              prefixIcon: const Icon(
-                                Icons.aspect_ratio_rounded,
-                                color: AppColors.accentLight,
-                              ),
-                              filled: true,
-                              fillColor: AppColors.inputBg,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                    // 3. Street Address
+                    TextFormField(
+                      controller: _addressController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        labelText: 'Detailed Street Address',
+                        hintText: 'e.g. 142 Boulevard de la Liberté, Akwa',
+                        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        labelStyle: const TextStyle(color: AppColors.textSecondary),
+                        prefixIcon: const Icon(Icons.pin_drop_rounded, color: AppColors.accentLight),
+                        filled: true,
+                        fillColor: AppColors.inputBg,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
 
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _latController,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: InputDecoration(
-                              labelText: 'Latitude (GPS)',
-                              labelStyle: const TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                              filled: true,
-                              fillColor: AppColors.inputBg,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _lngController,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: InputDecoration(
-                              labelText: 'Longitude (GPS)',
-                              labelStyle: const TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                              filled: true,
-                              fillColor: AppColors.inputBg,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                    // 4. Hourly Rate
+                    TextFormField(
+                      controller: _rateController,
+                      keyboardType: TextInputType.number,
+                      validator: (v) => Validators.validateRequired(v, 'Hourly Rate'),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        labelText: 'Hourly Rate (FCFA) *',
+                        hintText: '15000',
+                        labelStyle: const TextStyle(color: AppColors.textSecondary),
+                        prefixIcon: const Icon(Icons.monetization_on_rounded, color: AppColors.accentLight),
+                        filled: true,
+                        fillColor: AppColors.inputBg,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 18),
 
+                    // Optional Advanced Settings Expansion Tile
+                    Theme(
+                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        title: Text(
+                          _showAdvanced ? 'Hide Technical & GPS Specs' : 'Show Technical Specs (Resolution, Hours, Demos & GPS)',
+                          style: const TextStyle(
+                            color: AppColors.accentLight,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        trailing: Icon(
+                          _showAdvanced ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                          color: AppColors.accentLight,
+                          size: 20,
+                        ),
+                        onExpansionChanged: (val) => setState(() => _showAdvanced = val),
+                        children: [
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _resolutionController,
+                                  style: const TextStyle(color: Colors.white),
+                                  decoration: InputDecoration(
+                                    labelText: 'Resolution',
+                                    labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                    filled: true,
+                                    fillColor: AppColors.inputBg,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _operatingHoursController,
+                                  style: const TextStyle(color: Colors.white),
+                                  decoration: InputDecoration(
+                                    labelText: 'Operating Hours',
+                                    labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                    filled: true,
+                                    fillColor: AppColors.inputBg,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _latController,
+                                  style: const TextStyle(color: Colors.white),
+                                  decoration: InputDecoration(
+                                    labelText: 'Latitude (GPS)',
+                                    labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                    filled: true,
+                                    fillColor: AppColors.inputBg,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _lngController,
+                                  style: const TextStyle(color: Colors.white),
+                                  decoration: InputDecoration(
+                                    labelText: 'Longitude (GPS)',
+                                    labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                    filled: true,
+                                    fillColor: AppColors.inputBg,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          TextFormField(
+                            controller: _descriptionController,
+                            maxLines: 2,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              labelText: 'Description & Advertising Info',
+                              labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                              filled: true,
+                              fillColor: AppColors.inputBg,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Submit Button
                     SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -488,12 +745,12 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
                               ),
                         label: Text(
                           _isSubmitting
-                              ? 'GENERATING QR & REGISTERING...'
+                              ? 'REGISTERING BILLBOARD & GENERATING QR...'
                               : 'REGISTER BILLBOARD & GENERATE QR CODE',
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: 13,
                           ),
                         ),
                         style: ElevatedButton.styleFrom(

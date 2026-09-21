@@ -5,10 +5,13 @@ import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 import '../../services/billboard_service.dart';
 import '../../models/billboard_model.dart';
+import '../../models/advertisement_model.dart';
+import '../../services/advertisement_service.dart';
 import '../owner/add_billboard_screen.dart';
 import '../analytics_iot_screen.dart';
 import '../../widgets/qr_code_dialog.dart';
 import '../../widgets/role_guard.dart';
+import 'admin_iot_monitoring_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -398,6 +401,155 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  // ── Edit Billboard Dialog ────────────────────────────────────────────────
+  void _openEditBillboardDialog(
+    BuildContext context,
+    BillboardModel b,
+    VoidCallback onSaved,
+  ) {
+    final nameCtrl = TextEditingController(text: b.billboardName);
+    final locCtrl = TextEditingController(text: b.location);
+    final rateCtrl = TextEditingController(text: b.hourlyRate.toStringAsFixed(0));
+    String displayStatus = b.status;
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (editCtx) => StatefulBuilder(
+        builder: (editCtx, setEditState) => AlertDialog(
+          backgroundColor: AppColors.surfaceDark,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: AppColors.accentPrimary, width: 1.5),
+          ),
+          title: Row(
+            children: const [
+              Icon(Icons.edit_note_rounded, color: AppColors.accentLight, size: 26),
+              SizedBox(width: 10),
+              Text(
+                'Edit Billboard & TV Specs',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Billboard Name / TV Identifier',
+                    labelStyle: const TextStyle(color: AppColors.textSecondary),
+                    filled: true,
+                    fillColor: AppColors.inputBg,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: locCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Physical Location Address',
+                    labelStyle: const TextStyle(color: AppColors.textSecondary),
+                    filled: true,
+                    fillColor: AppColors.inputBg,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: rateCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Hourly Rate (FCFA)',
+                    labelStyle: const TextStyle(color: AppColors.textSecondary),
+                    filled: true,
+                    fillColor: AppColors.inputBg,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  initialValue: displayStatus,
+                  dropdownColor: AppColors.surfaceDark,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Display Status',
+                    labelStyle: const TextStyle(color: AppColors.textSecondary),
+                    filled: true,
+                    fillColor: AppColors.inputBg,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'ACTIVE', child: Text('ACTIVE (Online)')),
+                    DropdownMenuItem(value: 'INACTIVE', child: Text('INACTIVE (Offline)')),
+                    DropdownMenuItem(value: 'MAINTENANCE', child: Text('MAINTENANCE')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setEditState(() => displayStatus = val);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(editCtx),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+            ),
+            ElevatedButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      setEditState(() => isSaving = true);
+                      try {
+                        final rate = double.tryParse(rateCtrl.text.trim()) ?? b.hourlyRate;
+                        await BillboardService().updateBillboard(
+                          billboardId: b.billboardId,
+                          billboardName: nameCtrl.text.trim(),
+                          location: locCtrl.text.trim(),
+                          pricePerHour: rate,
+                          displayStatus: displayStatus,
+                        );
+                        if (!editCtx.mounted) return;
+                        Navigator.pop(editCtx);
+                        onSaved();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: AppColors.cardDark,
+                            content: Text('${nameCtrl.text.trim()} updated successfully!'),
+                          ),
+                        );
+                      } catch (e) {
+                        setEditState(() => isSaving = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: Colors.red.shade900,
+                            content: Text('Update failed: $e'),
+                          ),
+                        );
+                      }
+                    },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.accentPrimary),
+              child: isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text('SAVE CHANGES', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── Manage Billboards Dialog ──────────────────────────────────────────────
   void _openManageBillboardsDialog(BuildContext context) async {
     showDialog(
@@ -416,8 +568,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 child: Container(
                   constraints: const BoxConstraints(
-                    maxWidth: 750,
-                    maxHeight: 650,
+                    maxWidth: 820,
+                    maxHeight: 700,
                   ),
                   padding: const EdgeInsets.all(24),
                   child: Column(
@@ -435,7 +587,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               ),
                               SizedBox(width: 12),
                               Text(
-                                'Manage Billboards & Print QR',
+                                'Manage Billboards & IoT Displays',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -446,6 +598,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           ),
                           Row(
                             children: [
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const AdminIotMonitoringScreen(),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.sensors_rounded, size: 16, color: Colors.cyanAccent),
+                                label: const Text('IoT MONITOR', style: TextStyle(color: Colors.cyanAccent, fontSize: 12)),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: Colors.cyan.withValues(alpha: 0.5)),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
                               ElevatedButton.icon(
                                 onPressed: () async {
                                   Navigator.pop(context);
@@ -462,7 +630,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   Icons.add_location_alt_rounded,
                                   size: 16,
                                 ),
-                                label: const Text('Add Billboard'),
+                                label: const Text('Add TV Billboard'),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.redAccent,
                                   foregroundColor: Colors.white,
@@ -482,7 +650,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'As Admin, generate, download, or print location QR Codes to paste onto physical billboard displays.',
+                        'As Admin, manage billboard names, locations, rates, monitor IoT player telemetry, and print QR Codes for Smart TVs.',
                         style: TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 13,
@@ -514,57 +682,419 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 const Divider(color: AppColors.borderSubtle),
                             itemBuilder: (context, index) {
                               final b = billboards[index];
-                              return ListTile(
-                                leading: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.redAccent.withValues(
-                                      alpha: 0.15,
-                                    ),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(
-                                    Icons.tv_rounded,
-                                    color: Colors.redAccent,
-                                  ),
-                                ),
-                                title: Text(
-                                  b.billboardName,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  '${b.location} • ${b.hourlyRate.toStringAsFixed(0)} FCFA/hr • ${b.screenSize}',
-                                  style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                trailing: ElevatedButton.icon(
-                                  onPressed: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (_) => QrCodeDialog(
-                                        billboard: b,
-                                        readOnly: false,
+                              final bool isOnline = b.status.toUpperCase() == 'ACTIVE';
+
+                              return Container(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: isOnline
+                                            ? Colors.green.withValues(alpha: 0.15)
+                                            : Colors.redAccent.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
-                                    );
-                                  },
-                                  icon: const Icon(
-                                    Icons.qr_code_2_rounded,
-                                    size: 16,
-                                  ),
-                                  label: const Text('Print QR'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.accentPrimary,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
+                                      child: Icon(
+                                        Icons.tv_rounded,
+                                        color: isOnline ? Colors.greenAccent : Colors.redAccent,
+                                      ),
                                     ),
-                                  ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Text(
+                                                b.billboardName,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 15,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: isOnline
+                                                      ? Colors.green.shade900
+                                                      : Colors.amber.shade900,
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  isOnline ? 'IoT ONLINE' : 'IoT OFFLINE',
+                                                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${b.location} • ${b.hourlyRate.toStringAsFixed(0)} FCFA/hr • ${b.screenSize}',
+                                            style: const TextStyle(
+                                              color: AppColors.textSecondary,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    // Approval Status Dropdown Menu
+                                    PopupMenuButton<String>(
+                                      tooltip: 'Change Billboard Approval Status',
+                                      onSelected: (newStatus) async {
+                                        try {
+                                          await BillboardService().updateApprovalStatus(b.billboardId, newStatus);
+                                          setModalState(() {});
+                                          setState(() {});
+                                          if (!context.mounted) return;
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              backgroundColor: AppColors.cardDark,
+                                              content: Text('${b.billboardName} status updated to $newStatus'),
+                                            ),
+                                          );
+                                        } catch (e) {
+                                          if (!context.mounted) return;
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              backgroundColor: Colors.red.shade900,
+                                              content: Text('Failed to update status: $e'),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      itemBuilder: (context) => const [
+                                        PopupMenuItem(value: 'APPROVED', child: Text('Approve (Publish Live)')),
+                                        PopupMenuItem(value: 'REJECTED', child: Text('Reject Billboard')),
+                                        PopupMenuItem(value: 'SUSPENDED', child: Text('Suspend Billboard')),
+                                        PopupMenuItem(value: 'PENDING_APPROVAL', child: Text('Set to Pending Approval')),
+                                      ],
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: b.isApproved
+                                              ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                                              : (b.isPendingApproval ? Colors.amber.withValues(alpha: 0.15) : Colors.red.withValues(alpha: 0.15)),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: b.isApproved
+                                                ? const Color(0xFF10B981)
+                                                : (b.isPendingApproval ? Colors.amber : Colors.redAccent),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              b.approvalStatus,
+                                              style: TextStyle(
+                                                color: b.isApproved
+                                                    ? const Color(0xFF10B981)
+                                                    : (b.isPendingApproval ? Colors.amber : Colors.redAccent),
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 2),
+                                            const Icon(Icons.arrow_drop_down, size: 14, color: Colors.white70),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    // Edit Button
+                                    IconButton(
+                                      tooltip: 'Edit Billboard & Location',
+                                      icon: const Icon(Icons.edit_rounded, color: AppColors.accentLight, size: 20),
+                                      onPressed: () {
+                                        _openEditBillboardDialog(context, b, () {
+                                          setModalState(() {});
+                                          setState(() {});
+                                        });
+                                      },
+                                    ),
+                                    // IoT Telemetry Button
+                                    IconButton(
+                                      tooltip: 'View IoT Telemetry',
+                                      icon: const Icon(Icons.sensors_rounded, color: Colors.cyanAccent, size: 20),
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const AdminIotMonitoringScreen(),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    // Print QR Button
+                                    ElevatedButton.icon(
+                                      onPressed: () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (_) => QrCodeDialog(
+                                            billboard: b,
+                                            readOnly: false,
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(
+                                        Icons.qr_code_2_rounded,
+                                        size: 16,
+                                      ),
+                                      label: const Text('Print QR'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.accentPrimary,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  // ── Flagged Ads & AI Moderation Dialog ──────────────────────────────────
+  void _openFlaggedAdsDialog(BuildContext context) async {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return FutureBuilder<List<AdvertisementModel>>(
+            future: AdvertisementService().getFlaggedAdvertisements(),
+            builder: (context, snapshot) {
+              final ads = snapshot.data ?? [];
+
+              return Dialog(
+                backgroundColor: AppColors.surfaceDark,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: const BorderSide(color: Colors.amber, width: 1.5),
+                ),
+                child: Container(
+                  constraints: const BoxConstraints(
+                    maxWidth: 780,
+                    maxHeight: 650,
+                  ),
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(
+                                Icons.verified_user_rounded,
+                                color: Colors.amber,
+                                size: 28,
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                'AI Moderation & Flagged Ads Queue',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ],
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Advertisements flagged by Google Gemini AI for potential policy compliance issues or manual verification review.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (snapshot.connectionState == ConnectionState.waiting)
+                        const Expanded(
+                          child: Center(
+                            child: CircularProgressIndicator(color: Colors.amber),
+                          ),
+                        )
+                      else if (ads.isEmpty)
+                        Expanded(
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(Icons.check_circle_outline_rounded, size: 56, color: Color(0xFF10B981)),
+                                SizedBox(height: 12),
+                                Text(
+                                  'Flagged Ads Queue Clear!',
+                                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'All uploaded advertisements have passed Gemini AI safety screening.',
+                                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: ListView.separated(
+                            itemCount: ads.length,
+                            separatorBuilder: (_, index) => const Divider(color: AppColors.borderSubtle),
+                            itemBuilder: (context, index) {
+                              final ad = ads[index];
+                              return Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.cardDark,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: Colors.amber),
+                                          ),
+                                          child: Text(
+                                            ad.verificationStatus,
+                                            style: const TextStyle(
+                                              color: Colors.amber,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'AI Confidence: ${(ad.aiConfidence * 100).toInt()}%',
+                                          style: const TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Text(
+                                          ad.mediaType,
+                                          style: const TextStyle(
+                                            color: AppColors.accentLight,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      ad.title,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                    if (ad.rejectionReason != null && ad.rejectionReason!.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Flag Reason: ${ad.rejectionReason}',
+                                        style: const TextStyle(color: Colors.orangeAccent, fontSize: 12),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        OutlinedButton.icon(
+                                          onPressed: () async {
+                                            try {
+                                              await AdvertisementService().adminReviewAdvertisement(
+                                                advertisementId: ad.advertisementId,
+                                                status: 'REJECTED',
+                                                adminNotes: 'Rejected during admin manual review.',
+                                                correctionReason: 'Content violates platform advertising guidelines.',
+                                              );
+                                              setModalState(() {});
+                                              if (!context.mounted) return;
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Advertisement rejected.')),
+                                              );
+                                            } catch (e) {
+                                              if (!context.mounted) return;
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text('Error: $e')),
+                                              );
+                                            }
+                                          },
+                                          icon: const Icon(Icons.close_rounded, size: 16, color: Colors.redAccent),
+                                          label: const Text('REJECT', style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                                          style: OutlinedButton.styleFrom(
+                                            side: const BorderSide(color: Colors.redAccent),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        ElevatedButton.icon(
+                                          onPressed: () async {
+                                            try {
+                                              await AdvertisementService().adminReviewAdvertisement(
+                                                advertisementId: ad.advertisementId,
+                                                status: 'APPROVED',
+                                                adminNotes: 'Approved after admin manual inspection.',
+                                              );
+                                              setModalState(() {});
+                                              if (!context.mounted) return;
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Advertisement approved & broadcast enabled!')),
+                                              );
+                                            } catch (e) {
+                                              if (!context.mounted) return;
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text('Error: $e')),
+                                              );
+                                            }
+                                          },
+                                          icon: const Icon(Icons.check_rounded, size: 16, color: Colors.white),
+                                          label: const Text('APPROVE AD', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFF10B981),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               );
                             },
@@ -850,7 +1380,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 physics: const NeverScrollableScrollPhysics(),
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 16,
-                childAspectRatio: isDesktop ? 1.6 : 2.2,
+                childAspectRatio: isDesktop ? 1.85 : (size.width > 600 ? 2.1 : 2.5),
                 children: const [
                   StatCard(
                     title: 'Total Users',
@@ -1030,7 +1560,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ),
                     ),
                   ),
-                  // 4. Manage Payments Button (Admin only)
+                  // 5. Manage Payments Button (Admin only)
                   ElevatedButton.icon(
                     onPressed: () => _openManagePaymentsDialog(context),
                     icon: const Icon(
@@ -1046,6 +1576,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.redAccent,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 14,
+                      ),
+                    ),
+                  ),
+
+                  // 6. AI Moderation & Flagged Ads Button (Admin only)
+                  ElevatedButton.icon(
+                    onPressed: () => _openFlaggedAdsDialog(context),
+                    icon: const Icon(
+                      Icons.verified_user_rounded,
+                      color: Colors.white,
+                    ),
+                    label: const Text(
+                      'AI Moderation & Flagged Ads',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber.shade800,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 18,
                         vertical: 14,

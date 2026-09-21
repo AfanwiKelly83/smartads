@@ -42,11 +42,11 @@ const register = async (req, res, next) => {
       });
     }
 
-    // 3. Only explicitly requested supported roles are accepted.
-    const requestedRole = String(role || 'USER').toUpperCase();
+    // 3. Default role is strictly ADVERTISER unless specified.
+    const requestedRole = String(role || 'ADVERTISER').toUpperCase();
     const userRole = ['ADMIN', 'ADVERTISER', 'BILLBOARD_OWNER', 'USER'].includes(requestedRole)
       ? requestedRole
-      : 'USER';
+      : 'ADVERTISER';
 
     const user = await User.create({
       fullName,
@@ -63,6 +63,64 @@ const register = async (req, res, next) => {
     return res.status(201).json({
       success: true,
       message: 'User registered successfully.',
+      data: {
+        token,
+        user: {
+          userId: user.userId,
+          fullName: user.fullName,
+          email: user.email,
+          phoneNumber: user.phoneNumber,
+          role: user.role
+        }
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /api/v1/auth/register-owner
+const registerOwner = async (req, res, next) => {
+  try {
+    const { fullName, email, password, phoneNumber } = req.body;
+
+    if (!fullName || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Full name, email, and password are required.'
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email format.'
+      });
+    }
+
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message: 'Email address is already registered.'
+      });
+    }
+
+    // Backend securely assigns BILLBOARD_OWNER role
+    const user = await User.create({
+      fullName,
+      email,
+      password,
+      role: 'BILLBOARD_OWNER',
+      phoneNumber
+    });
+
+    const token = generateToken(user);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Billboard Owner account registered successfully.',
       data: {
         token,
         user: {
@@ -238,6 +296,7 @@ const changePassword = async (req, res, next) => {
 
 module.exports = {
   register,
+  registerOwner,
   login,
   getProfile,
   updateProfile,

@@ -1,10 +1,45 @@
-const { Billboard, User } = require('../models');
+const { Billboard, User, Notification } = require('../models');
 const { generateBillboardQRCode } = require('../services/qrCodeService');
+const { Op } = require('sequelize');
 
-// POST /api/v1/billboards (Only ADMIN allowed)
+/**
+ * Generate unique public Billboard Code (BILL-001, BILL-002, ...)
+ */
+const generateUniqueBillboardCode = async () => {
+  const count = await Billboard.count();
+  let candidateNumber = count + 1;
+  let candidateCode = `BILL-${String(candidateNumber).padStart(3, '0')}`;
+  
+  // Ensure uniqueness
+  while (await Billboard.findOne({ where: { billboardCode: candidateCode } })) {
+    candidateNumber++;
+    candidateCode = `BILL-${String(candidateNumber).padStart(3, '0')}`;
+  }
+  return candidateCode;
+};
+
+// POST /api/v1/billboards (ADMIN or BILLBOARD_OWNER)
 const createBillboard = async (req, res, next) => {
   try {
-    const { billboardName, location, pricePerHour, latitude, longitude, screenSize, resolution } = req.body;
+    const {
+      billboardName,
+      location,
+      address,
+      description,
+      billboardType,
+      width,
+      height,
+      resolution,
+      pricePerHour,
+      operatingHours,
+      images,
+      videoDemo,
+      technicalSpecs,
+      additionalInfo,
+      latitude,
+      longitude,
+      screenSize
+    } = req.body;
 
     if (!billboardName || !location) {
       return res.status(400).json({
@@ -13,17 +48,43 @@ const createBillboard = async (req, res, next) => {
       });
     }
 
+    const userId = req.user.userId || req.user.id;
+    const isOwner = req.user.role === 'BILLBOARD_OWNER';
+    const isAdmin = req.user.role === 'ADMIN';
+
+    // Status: Owner created billboards require Admin approval
+    const approvalStatus = isAdmin ? 'APPROVED' : 'PENDING_APPROVAL';
+
+    const parsedLat = latitude !== undefined && latitude !== null && latitude !== '' ? parseFloat(latitude) : null;
+    const parsedLng = longitude !== undefined && longitude !== null && longitude !== '' ? parseFloat(longitude) : null;
+    const parsedRate = pricePerHour !== undefined && pricePerHour !== null && pricePerHour !== '' ? parseFloat(pricePerHour) : 15000.0;
+
+    const billboardCode = await generateUniqueBillboardCode();
+
     const billboard = await Billboard.create({
+      billboardCode,
       billboardName,
+      ownerId: userId,
+      createdBy: userId,
       location,
-      pricePerHour: pricePerHour || 10.0,
-      latitude,
-      longitude,
-      screenSize,
+      address: address || location,
+      description: description || 'Digital advertising display available for scheduled campaigns.',
+      billboardType: billboardType || 'SMART_TV',
+      width: width ? String(width) : '1920',
+      height: height ? String(height) : '1080',
       resolution: resolution || '1920x1080',
+      pricePerHour: parsedRate,
+      operatingHours: operatingHours || '06:00 - 22:00',
+      images: images || null,
+      videoDemo: videoDemo || null,
+      technicalSpecs: technicalSpecs || null,
+      additionalInfo: additionalInfo || null,
+      approvalStatus,
       displayStatus: 'ACTIVE',
       availabilityStatus: 'AVAILABLE',
-      createdBy: req.user.userId || req.user.id
+      latitude: parsedLat,
+      longitude: parsedLng,
+      screenSize: screenSize || 'Smart TV HD (1920x1080)'
     });
 
     // Automatically generate QR Code
@@ -31,9 +92,23 @@ const createBillboard = async (req, res, next) => {
     billboard.qrCode = qrCodePath;
     await billboard.save();
 
+    // Create Notification
+    try {
+      await Notification.create({
+        userId,
+        message: isOwner
+          ? `Your billboard "${billboard.billboardName}" (${billboard.billboardCode}) has been submitted for Admin approval.`
+          : `Billboard "${billboard.billboardName}" (${billboard.billboardCode}) created and activated.`,
+        notificationType: 'BILLBOARD_STATUS',
+        status: 'UNREAD'
+      });
+    } catch (_) {}
+
     return res.status(201).json({
       success: true,
-      message: 'Billboard created successfully and QR code generated.',
+      message: isOwner
+        ? 'Billboard created successfully. Status: PENDING_APPROVAL. QR code generated.'
+        : 'Billboard created and approved successfully. QR code generated.',
       data: billboard
     });
   } catch (err) {
@@ -41,11 +116,37 @@ const createBillboard = async (req, res, next) => {
   }
 };
 
-// GET /api/v1/billboards
+// GET /api/v1/billboards (Public/Advertiser search returns APPROVED only, Admin can see all with ?all=true)
 const getAllBillboards = async (req, res, next) => {
   try {
+    const { all, search, status } = req.query;
+    let whereClause = {};
+
+    const isAdmin = req.user && req.user.role === 'ADMIN';
+
+    if (!isAdmin || all !== 'true') {
+      // Public / Advertisers only see APPROVED and ACTIVE billboards
+      whereClause.approvalStatus = 'APPROVED';
+      whereClause.displayStatus = { [Op.ne]: 'INACTIVE' };
+    } else if (status) {
+      whereClause.approvalStatus = status;
+    }
+
+    if (search) {
+      whereClause[Op.or] = [
+        { billboardName: { [Op.like]: `%${search}%` } },
+        { location: { [Op.like]: `%${search}%` } },
+        { billboardCode: { [Op.like]: `%${search}%` } }
+      ];
+    }
+
     const billboards = await Billboard.findAll({
-      include: [{ model: User, as: 'creator', attributes: ['userId', 'fullName', 'email'] }]
+      where: whereClause,
+      include: [
+        { model: User, as: 'owner', attributes: ['userId', 'fullName', 'email', 'phoneNumber'] },
+        { model: User, as: 'creator', attributes: ['userId', 'fullName', 'email'] }
+      ],
+      order: [['createdAt', 'DESC']]
     });
 
     return res.json({
@@ -57,12 +158,55 @@ const getAllBillboards = async (req, res, next) => {
   }
 };
 
-// GET /api/v1/billboards/:id
+// GET /api/v1/billboards/my-billboards (Billboard Owner's own billboards)
+const getMyBillboards = async (req, res, next) => {
+  try {
+    const userId = req.user.userId || req.user.id;
+
+    const billboards = await Billboard.findAll({
+      where: {
+        [Op.or]: [
+          { ownerId: userId },
+          { createdBy: userId }
+        ]
+      },
+      include: [
+        { model: User, as: 'owner', attributes: ['userId', 'fullName', 'email', 'phoneNumber'] }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    return res.json({
+      success: true,
+      data: billboards
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /api/v1/billboards/:id (Lookup by ID or billboardCode)
 const getBillboardById = async (req, res, next) => {
   try {
-    const billboard = await Billboard.findByPk(req.params.id, {
-      include: [{ model: User, as: 'creator', attributes: ['userId', 'fullName', 'email'] }]
-    });
+    const param = req.params.id;
+    let billboard;
+
+    if (/^\d+$/.test(param)) {
+      billboard = await Billboard.findByPk(param, {
+        include: [
+          { model: User, as: 'owner', attributes: ['userId', 'fullName', 'email', 'phoneNumber'] },
+          { model: User, as: 'creator', attributes: ['userId', 'fullName', 'email'] }
+        ]
+      });
+    } else {
+      billboard = await Billboard.findOne({
+        where: { billboardCode: param },
+        include: [
+          { model: User, as: 'owner', attributes: ['userId', 'fullName', 'email', 'phoneNumber'] },
+          { model: User, as: 'creator', attributes: ['userId', 'fullName', 'email'] }
+        ]
+      });
+    }
 
     if (!billboard) {
       return res.status(404).json({ success: false, message: 'Billboard not found.' });
@@ -77,7 +221,7 @@ const getBillboardById = async (req, res, next) => {
   }
 };
 
-// PUT /api/v1/billboards/:id (Admin only)
+// PUT /api/v1/billboards/:id (Admin or Resource Owner)
 const updateBillboard = async (req, res, next) => {
   try {
     const billboard = await Billboard.findByPk(req.params.id);
@@ -86,17 +230,63 @@ const updateBillboard = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Billboard not found.' });
     }
 
-    const { billboardName, location, pricePerHour, displayStatus, availabilityStatus, latitude, longitude, screenSize, resolution } = req.body;
+    const userId = req.user.userId || req.user.id;
+    const isAdmin = req.user.role === 'ADMIN';
+    const isOwner = (billboard.ownerId === userId || billboard.createdBy === userId);
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You do not have permission to modify this billboard.'
+      });
+    }
+
+    const {
+      billboardName,
+      location,
+      address,
+      description,
+      billboardType,
+      width,
+      height,
+      resolution,
+      pricePerHour,
+      operatingHours,
+      images,
+      videoDemo,
+      technicalSpecs,
+      additionalInfo,
+      displayStatus,
+      availabilityStatus,
+      latitude,
+      longitude,
+      screenSize
+    } = req.body;
 
     if (billboardName) billboard.billboardName = billboardName;
     if (location) billboard.location = location;
-    if (pricePerHour !== undefined) billboard.pricePerHour = pricePerHour;
+    if (address) billboard.address = address;
+    if (description) billboard.description = description;
+    if (billboardType) billboard.billboardType = billboardType;
+    if (width) billboard.width = String(width);
+    if (height) billboard.height = String(height);
+    if (resolution) billboard.resolution = resolution;
+    if (pricePerHour !== undefined) billboard.pricePerHour = parseFloat(pricePerHour);
+    if (operatingHours) billboard.operatingHours = operatingHours;
+    if (images) billboard.images = images;
+    if (videoDemo) billboard.videoDemo = videoDemo;
+    if (technicalSpecs) billboard.technicalSpecs = technicalSpecs;
+    if (additionalInfo) billboard.additionalInfo = additionalInfo;
     if (displayStatus) billboard.displayStatus = displayStatus;
     if (availabilityStatus) billboard.availabilityStatus = availabilityStatus;
-    if (latitude !== undefined) billboard.latitude = latitude;
-    if (longitude !== undefined) billboard.longitude = longitude;
+    if (latitude !== undefined) billboard.latitude = (latitude !== null && latitude !== '') ? parseFloat(latitude) : null;
+    if (longitude !== undefined) billboard.longitude = (longitude !== null && longitude !== '') ? parseFloat(longitude) : null;
     if (screenSize) billboard.screenSize = screenSize;
-    if (resolution) billboard.resolution = resolution;
+
+    // Re-generate QR Code if needed or ensure it exists
+    if (!billboard.qrCode) {
+      billboard.qrCode = await generateBillboardQRCode(billboard);
+    }
 
     await billboard.save();
 
@@ -110,13 +300,76 @@ const updateBillboard = async (req, res, next) => {
   }
 };
 
-// DELETE /api/v1/billboards/:id (Admin only)
+// PUT /api/v1/billboards/:id/approval (Admin only: Approve, Reject, Suspend, Unpublish)
+const updateApprovalStatus = async (req, res, next) => {
+  try {
+    const { status, notes } = req.body;
+    const allowedStatuses = ['APPROVED', 'REJECTED', 'SUSPENDED', 'UNPUBLISHED', 'PENDING_APPROVAL'];
+
+    const nextStatus = String(status || '').toUpperCase();
+    if (!allowedStatuses.includes(nextStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Allowed: [${allowedStatuses.join(', ')}]`
+      });
+    }
+
+    const billboard = await Billboard.findByPk(req.params.id);
+    if (!billboard) {
+      return res.status(404).json({ success: false, message: 'Billboard not found.' });
+    }
+
+    billboard.approvalStatus = nextStatus;
+    if (nextStatus === 'APPROVED') {
+      billboard.displayStatus = 'ACTIVE';
+      billboard.availabilityStatus = 'AVAILABLE';
+    } else if (nextStatus === 'SUSPENDED' || nextStatus === 'REJECTED') {
+      billboard.displayStatus = 'INACTIVE';
+      billboard.availabilityStatus = 'UNAVAILABLE';
+    }
+    await billboard.save();
+
+    // Notify owner
+    const targetUserId = billboard.ownerId || billboard.createdBy;
+    if (targetUserId) {
+      try {
+        await Notification.create({
+          userId: targetUserId,
+          message: `Your billboard "${billboard.billboardName}" (${billboard.billboardCode}) is now ${nextStatus}.${notes ? ` Notes: ${notes}` : ''}`,
+          notificationType: 'BILLBOARD_STATUS',
+          status: 'UNREAD'
+        });
+      } catch (_) {}
+    }
+
+    return res.json({
+      success: true,
+      message: `Billboard approval status updated to ${nextStatus}.`,
+      data: billboard
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// DELETE /api/v1/billboards/:id (Admin or Resource Owner)
 const deleteBillboard = async (req, res, next) => {
   try {
     const billboard = await Billboard.findByPk(req.params.id);
 
     if (!billboard) {
       return res.status(404).json({ success: false, message: 'Billboard not found.' });
+    }
+
+    const userId = req.user.userId || req.user.id;
+    const isAdmin = req.user.role === 'ADMIN';
+    const isOwner = (billboard.ownerId === userId || billboard.createdBy === userId);
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You do not have permission to delete this billboard.'
+      });
     }
 
     await billboard.destroy();
@@ -133,7 +386,9 @@ const deleteBillboard = async (req, res, next) => {
 module.exports = {
   createBillboard,
   getAllBillboards,
+  getMyBillboards,
   getBillboardById,
   updateBillboard,
+  updateApprovalStatus,
   deleteBillboard
 };

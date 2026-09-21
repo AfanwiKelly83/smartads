@@ -104,7 +104,7 @@ class OwnerDashboard extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
-              childAspectRatio: isDesktop ? 1.6 : 2.2,
+              childAspectRatio: isDesktop ? 1.85 : (size.width > 600 ? 2.1 : 2.5),
               children: const [
                 StatCard(
                   title: 'My Billboards',

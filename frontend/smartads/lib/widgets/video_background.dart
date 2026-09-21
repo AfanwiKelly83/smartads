@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import '../theme/app_theme.dart';
+
 import 'street_image_background.dart';
 
 class VideoBackground extends StatefulWidget {
@@ -68,9 +68,9 @@ class _VideoBackgroundState extends State<VideoBackground> {
             child: VideoPlayer(_controller),
           ),
         ),
-        // Dark overlay to ensure readability
+        // Light translucent overlay to keep background video/image vibrant while ensuring text legibility
         Container(
-          color: Colors.black.withValues(alpha: 0.6),
+          color: Colors.black.withValues(alpha: 0.22),
         ),
         widget.child,
       ],

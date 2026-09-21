@@ -1,5 +1,6 @@
 const { IoTDevice, Billboard } = require('../models');
 const { registerDeviceHeartbeat } = require('../services/iotService');
+const { Op } = require('sequelize');
 
 // POST /api/v1/iot/heartbeat
 const postHeartbeat = async (req, res, next) => {
@@ -30,8 +31,26 @@ const postHeartbeat = async (req, res, next) => {
 // GET /api/v1/iot/devices
 const getDevices = async (req, res, next) => {
   try {
+    const userId = req.user?.userId || req.user?.id;
+    const role = req.user?.role;
+
+    let billboardWhere = {};
+    if (role === 'BILLBOARD_OWNER') {
+      billboardWhere = {
+        [Op.or]: [{ ownerId: userId }, { createdBy: userId }]
+      };
+    }
+
+    const isOwner = role === 'BILLBOARD_OWNER';
     const devices = await IoTDevice.findAll({
-      include: [{ model: Billboard, as: 'billboard' }]
+      include: [
+        {
+          model: Billboard,
+          as: 'billboard',
+          where: isOwner ? billboardWhere : undefined,
+          required: isOwner ? true : false
+        }
+      ]
     });
 
     return res.json({

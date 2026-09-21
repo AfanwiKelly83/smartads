@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/branding_panel.dart';
 import '../widgets/video_background.dart';
-import 'role_selection_screen.dart';
 import 'auth_page.dart';
 
 class LandingScreen extends StatelessWidget {
@@ -99,7 +98,9 @@ class LandingScreen extends StatelessWidget {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const AuthPage(initialMode: AuthMode.register),
+                ),
               );
             },
             style: ElevatedButton.styleFrom(

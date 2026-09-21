@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../utils/app_colors.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/booking_flow.dart';
@@ -269,7 +270,7 @@ class _AdvertiserDashboardState extends State<AdvertiserDashboard> {
                 ),
                 const SizedBox(height: 14),
 
-                // Media Preview Container
+                // Media Preview Container with Device Storage Picker
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -301,6 +302,34 @@ class _AdvertiserDashboardState extends State<AdvertiserDashboard> {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final FileType type = selectedMedia == 'VIDEO'
+                              ? FileType.video
+                              : FileType.image;
+                          final picked = await FilePicker.pickFile(
+                            type: type,
+                          );
+                          if (picked != null) {
+                            setUpdateState(() {
+                              mediaUrl = picked.name;
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.folder_open_rounded, size: 14),
+                        label: const Text(
+                          'BROWSE',
+                          style: TextStyle(fontSize: 11),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.accentLight,
+                          side: const BorderSide(color: AppColors.accentPrimary),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                         ),
                       ),
                     ],
@@ -392,60 +421,136 @@ class _AdvertiserDashboardState extends State<AdvertiserDashboard> {
                     color: AppColors.accentPrimary.withValues(alpha: 0.3),
                   ),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF065F46),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Text(
-                              'ADVERTISER PORTAL',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF065F46),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Text(
+                                      'ADVERTISER PORTAL',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: const Color(0xFF10B981)),
+                                    ),
+                                    child: const Text(
+                                      'ACTIVE • VERIFIED',
+                                      style: TextStyle(
+                                        color: Color(0xFF10B981),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 9,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
+                              const SizedBox(height: 12),
+                              Text(
+                                widget.isNewRegistration
+                                    ? 'Welcome to SmartAds! You registered as an Advertiser.'
+                                    : 'Welcome back, ${user?.fullName ?? 'Advertiser'}!',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                widget.isNewRegistration
+                                    ? 'Get started now! Scan a physical billboard QR code on-site or search digital billboards to schedule your first advertisement.'
+                                    : 'Monitor your active billboard broadcasts, check real-time playback percentages, and manage your booked screens.',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            widget.isNewRegistration
-                                ? 'Welcome to SmartAds! You registered as an Advertiser.'
-                                : 'Welcome back to SmartAds, ${user?.fullName ?? 'Advertiser'}!',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            widget.isNewRegistration
-                                ? 'Get started now! Scan a physical billboard QR code on-site or search digital billboards to schedule your first advertisement.'
-                                : 'Monitor your active billboard broadcasts, check real-time playback percentages, and update your advertising media or time slots.',
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 13,
-                            ),
+                        ),
+                        if (isDesktop) ...[
+                          const SizedBox(width: 16),
+                          const Icon(
+                            Icons.campaign_rounded,
+                            size: 70,
+                            color: AppColors.accentLight,
                           ),
                         ],
-                      ),
+                      ],
                     ),
-                    if (isDesktop)
-                      const Icon(
-                        Icons.campaign_rounded,
-                        size: 70,
-                        color: AppColors.accentLight,
-                      ),
+                    const SizedBox(height: 20),
+                    const Divider(color: AppColors.borderSubtle, height: 1),
+                    const SizedBox(height: 14),
+
+                    // User Info Details Bar
+                    Wrap(
+                      spacing: 24,
+                      runSpacing: 8,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.person_rounded, size: 14, color: AppColors.accentLight),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Account: ${user?.fullName ?? 'Advertiser User'}',
+                              style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.email_outlined, size: 14, color: AppColors.accentLight),
+                            const SizedBox(width: 6),
+                            Text(
+                              user?.email ?? 'advertiser@smartads.cm',
+                              style: const TextStyle(color: Colors.white70, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                        if (user?.phoneNumber != null && user!.phoneNumber!.isNotEmpty)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.phone_iphone_rounded, size: 14, color: AppColors.accentLight),
+                              const SizedBox(width: 6),
+                              Text(
+                                user.phoneNumber!,
+                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -487,9 +592,9 @@ class _AdvertiserDashboardState extends State<AdvertiserDashboard> {
                 const SizedBox(height: 32),
               ],
 
-              // ── CAMPAIGN METRICS ─────────────────────────────────────────────
+              // ── CAMPAIGN & USER ANALYTICS METRICS ───────────────────────────
               const Text(
-                'CAMPAIGN & ADVERTISING METRICS',
+                'USER ADVERTISING & CAMPAIGN ANALYTICS',
                 style: TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 12,
@@ -505,7 +610,7 @@ class _AdvertiserDashboardState extends State<AdvertiserDashboard> {
                 physics: const NeverScrollableScrollPhysics(),
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 16,
-                childAspectRatio: isDesktop ? 1.6 : 2.2,
+                childAspectRatio: isDesktop ? 1.85 : (size.width > 600 ? 2.1 : 2.5),
                 children: const [
                   StatCard(
                     title: 'Active Campaigns',
@@ -515,10 +620,10 @@ class _AdvertiserDashboardState extends State<AdvertiserDashboard> {
                     accentColor: AppColors.accentPrimary,
                   ),
                   StatCard(
-                    title: 'Uploaded Media Ads',
-                    value: '6 Files',
-                    subtitle: 'Ready for Broadcast',
-                    icon: Icons.perm_media_rounded,
+                    title: 'Booked Displays',
+                    value: '4 Screens',
+                    subtitle: '100% Broadcast Uptime',
+                    icon: Icons.tv_rounded,
                     accentColor: Colors.cyan,
                   ),
                   StatCard(
@@ -529,13 +634,147 @@ class _AdvertiserDashboardState extends State<AdvertiserDashboard> {
                     accentColor: Color(0xFF10B981),
                   ),
                   StatCard(
-                    title: 'Playbacks',
+                    title: 'Verified Playbacks',
                     value: '42,500 Times',
-                    subtitle: 'Player Reported',
+                    subtitle: 'IoT Telemetry Confirmed',
                     icon: Icons.auto_awesome_rounded,
                     accentColor: Colors.amber,
                   ),
                 ],
+              ),
+              const SizedBox(height: 36),
+
+              // ── MY BOOKED DEVICES & DIGITAL SCREENS SECTION ──────────────────
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'MY BOOKED DEVICES & DIGITAL SCREENS',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Displays with active or scheduled slots for your campaigns.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  TextButton.icon(
+                    onPressed: () => widget.onNavigateTab?.call(3), // Go to Bookings tab
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.accentLight),
+                    label: const Text('ALL BOOKINGS', style: TextStyle(color: AppColors.accentLight, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Booked devices cards list
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _billboards.take(3).length,
+                separatorBuilder: (_, index) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final b = _billboards[index];
+                  final isOnline = b.status.toUpperCase() == 'ACTIVE';
+
+                  return Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceDark,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.borderSubtle.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isOnline ? Colors.green.withValues(alpha: 0.15) : Colors.amber.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.tv_rounded,
+                            color: isOnline ? Colors.greenAccent : Colors.amberAccent,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    b.billboardName,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  if (b.billboardCode.isNotEmpty) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.accentPrimary.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        b.billboardCode,
+                                        style: const TextStyle(color: AppColors.accentLight, fontSize: 10, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${b.location} • ${b.screenSize} • ${b.hourlyRate.toStringAsFixed(0)} FCFA/hr',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isOnline ? const Color(0xFF10B981).withValues(alpha: 0.15) : Colors.amber.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: isOnline ? const Color(0xFF10B981) : Colors.amber),
+                          ),
+                          child: Text(
+                            isOnline ? 'ONLINE' : 'STANDBY',
+                            style: TextStyle(
+                              color: isOnline ? const Color(0xFF10B981) : Colors.amber,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 36),
 
@@ -698,20 +937,70 @@ class _AdvertiserDashboardState extends State<AdvertiserDashboard> {
                   ),
                   OutlinedButton.icon(
                     onPressed: () =>
-                        widget.onNavigateTab?.call(1), // Billboards tab
+                        widget.onNavigateTab?.call(3), // My Bookings tab
                     icon: const Icon(
-                      Icons.search_rounded,
-                      color: AppColors.accentLight,
+                      Icons.playlist_play_rounded,
+                      color: Color(0xFF10B981),
                     ),
                     label: const Text(
-                      'SEARCH DIGITAL BILLBOARDS',
+                      'MY BOOKINGS & SCREENS',
                       style: TextStyle(
-                        color: AppColors.accentLight,
+                        color: Color(0xFF10B981),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.borderSubtle),
+                      side: const BorderSide(color: Color(0xFF10B981)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        widget.onNavigateTab?.call(2), // Campaigns tab
+                    icon: const Icon(
+                      Icons.campaign_rounded,
+                      color: Colors.cyanAccent,
+                    ),
+                    label: const Text(
+                      'MANAGE CAMPAIGNS',
+                      style: TextStyle(
+                        color: Colors.cyanAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.cyan),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        widget.onNavigateTab?.call(1), // Navigates to directory/map
+                    icon: const Icon(
+                      Icons.map_rounded,
+                      color: Colors.cyanAccent,
+                    ),
+                    label: const Text(
+                      'EXPLORE ON MAP',
+                      style: TextStyle(
+                        color: Colors.cyanAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Colors.cyan.withValues(alpha: 0.5)),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
                         vertical: 16,

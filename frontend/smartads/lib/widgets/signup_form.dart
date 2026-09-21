@@ -5,6 +5,7 @@ import 'primary_button.dart';
 import 'password_strength_widget.dart';
 import '../services/auth_service.dart';
 import '../screens/main_navigation_screen.dart';
+import '../screens/owner/owner_register_screen.dart';
 
 class SignUpForm extends StatefulWidget {
   final VoidCallback onSwitchToLogin;
@@ -277,7 +278,50 @@ class _SignUpFormState extends State<SignUpForm> {
             isLoading: _isLoading,
             onPressed: _handleRegister,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
+
+          // Billboard Owner Prompt
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppTheme.inputBg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.accentPrimary.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.tv_rounded, color: AppTheme.accentLight, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: const Text(
+                    'Own a screen or Smart TV?',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const OwnerRegisterScreen()),
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
+                  child: const Text(
+                    'Join as Owner',
+                    style: TextStyle(
+                      color: AppTheme.accentLight,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
 
           // Bottom Toggle Switch
           Center(

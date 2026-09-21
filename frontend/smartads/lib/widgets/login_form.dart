@@ -86,6 +86,61 @@ class _LoginFormState extends State<LoginForm> {
     }
   }
 
+  void _quickLogin(String email, String password, String roleLabel) async {
+    _emailController.text = email;
+    _passwordController.text = password;
+    setState(() => _isLoading = true);
+
+    try {
+      await AuthService().login(email, password);
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppTheme.cardDark,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: AppTheme.accentPrimary),
+            ),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: AppTheme.accentLight),
+                const SizedBox(width: 12),
+                Text(
+                  'Signed in as $roleLabel ($email)',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const MainNavigationScreen(),
+          ),
+        );
+      }
+    } catch (err) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade900,
+            content: Text('Auto-login failed: ${err.toString()}'),
+          ),
+        );
+      }
+    }
+  }
+
   void _showForgotPasswordDialog() {
     final resetController = TextEditingController();
     showDialog(
@@ -159,6 +214,124 @@ class _LoginFormState extends State<LoginForm> {
     );
   }
 
+  Widget _buildQuickLoginSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.inputBg.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.accentPrimary.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.bolt_rounded, color: AppTheme.accentLight, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'QUICK DEMO AUTO-LOGIN',
+                style: TextStyle(
+                  color: AppTheme.accentLight,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Tap any test account to auto-fill and log in instantly:',
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildQuickLoginButton(
+                  roleName: 'Admin',
+                  email: 'admin@smartads.cm',
+                  password: 'Password123!',
+                  icon: Icons.admin_panel_settings_rounded,
+                  color: Colors.amber,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildQuickLoginButton(
+                  roleName: 'Advertiser',
+                  email: 'advertiser@smartads.cm',
+                  password: 'Password123!',
+                  icon: Icons.campaign_rounded,
+                  color: Colors.cyan,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildQuickLoginButton(
+                  roleName: 'Owner',
+                  email: 'owner@smartads.cm',
+                  password: 'Password123!',
+                  icon: Icons.tv_rounded,
+                  color: const Color(0xFF10B981),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickLoginButton({
+    required String roleName,
+    required String email,
+    required String password,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _isLoading ? null : () => _quickLogin(email, password, roleName),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: color.withValues(alpha: 0.4)),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(height: 4),
+              Text(
+                roleName,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Auto Sign-in',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontSize: 9,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Form(
@@ -180,7 +353,11 @@ class _LoginFormState extends State<LoginForm> {
             'Enter your credentials to access your advertising dashboard.',
             style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
+
+          // Quick Demo 1-Tap Auto Login Buttons
+          _buildQuickLoginSection(),
+          const SizedBox(height: 24),
 
           // Email Input
           CustomTextField(

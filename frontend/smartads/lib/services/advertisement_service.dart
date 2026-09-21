@@ -17,6 +17,9 @@ class AdvertisementService {
       }
       return [];
     } catch (e) {
+      if (ApiService.isDemoMode) {
+        return ApiService().getMockAdvertisements();
+      }
       rethrow;
     }
   }
@@ -100,6 +103,61 @@ class AdvertisementService {
         progressPercentage: progressPercentage ?? 65,
         status: status ?? 'RUNNING',
       );
+    }
+  }
+
+  Future<List<AdvertisementModel>> getOwnerAdvertisements() async {
+    try {
+      final res = await ApiService().get('${ApiConfig.advertisements}/owner-ads');
+      if (res['success'] == true && res['data'] != null) {
+        final List list = res['data'];
+        return list.map((item) => AdvertisementModel.fromJson(item)).toList();
+      }
+      return [];
+    } catch (e) {
+      if (ApiService.isDemoMode) {
+        return ApiService().getMockAdvertisements();
+      }
+      rethrow;
+    }
+  }
+
+  Future<List<AdvertisementModel>> getFlaggedAdvertisements() async {
+    try {
+      final res = await ApiService().get('${ApiConfig.advertisements}/flagged');
+      if (res['success'] == true && res['data'] != null) {
+        final List list = res['data'];
+        return list.map((item) => AdvertisementModel.fromJson(item)).toList();
+      }
+      return [];
+    } catch (e) {
+      if (ApiService.isDemoMode) return [];
+      rethrow;
+    }
+  }
+
+  Future<AdvertisementModel> adminReviewAdvertisement({
+    required int advertisementId,
+    required String status,
+    String? adminNotes,
+    String? correctionReason,
+  }) async {
+    try {
+      final res = await ApiService().put(
+        '${ApiConfig.advertisements}/$advertisementId/admin-review',
+        {
+          'status': status,
+          if (adminNotes != null) 'adminNotes': adminNotes,
+          if (correctionReason != null) 'correctionReason': correctionReason,
+        },
+      );
+      if (res['success'] == true && res['data'] != null) {
+        return AdvertisementModel.fromJson(res['data']);
+      } else {
+        throw Exception(res['message'] ?? 'Failed to review advertisement');
+      }
+    } catch (e) {
+      rethrow;
     }
   }
 }

@@ -25,9 +25,22 @@ class ApiService {
     _token = token;
     if (token == null) {
       _secureStorage.delete(key: 'smartads_jwt');
+      _secureStorage.delete(key: 'smartads_user');
     } else {
       _secureStorage.write(key: 'smartads_jwt', value: token);
     }
+  }
+
+  Future<void> saveSession(String token, UserModel user) async {
+    _token = token;
+    _currentUser = user;
+    try {
+      await _secureStorage.write(key: 'smartads_jwt', value: token);
+      await _secureStorage.write(
+        key: 'smartads_user',
+        value: jsonEncode(user.toJson()),
+      );
+    } catch (_) {}
   }
 
   ApiService._internal() {
@@ -40,7 +53,64 @@ class ApiService {
       if (t != null && t.isNotEmpty) {
         _token = t;
       }
+      final userJsonStr = await _secureStorage.read(key: 'smartads_user');
+      if (userJsonStr != null && userJsonStr.isNotEmpty) {
+        try {
+          _currentUser = UserModel.fromJson(jsonDecode(userJsonStr));
+        } catch (_) {}
+      }
     } catch (_) {}
+  }
+
+  Future<UserModel?> restoreSession() async {
+    try {
+      final token = await _secureStorage.read(key: 'smartads_jwt');
+      if (token == null || token.isEmpty) {
+        _token = null;
+        _currentUser = null;
+        return null;
+      }
+      _token = token;
+
+      final userJsonStr = await _secureStorage.read(key: 'smartads_user');
+      if (userJsonStr != null && userJsonStr.isNotEmpty) {
+        try {
+          _currentUser = UserModel.fromJson(jsonDecode(userJsonStr));
+        } catch (_) {}
+      }
+
+      try {
+        final profile = await fetchProfile();
+        _currentUser = profile;
+        await _secureStorage.write(
+          key: 'smartads_user',
+          value: jsonEncode(profile.toJson()),
+        );
+        return _currentUser;
+      } catch (e) {
+        if (e is HttpException && e.statusCode == 401) {
+          await logout();
+          return null;
+        }
+        if (_currentUser != null) {
+          return _currentUser;
+        }
+        if (isDemoMode) {
+          _currentUser = UserModel(
+            userId: 1,
+            fullName: 'SMARTADS User',
+            email: 'user@smartads.cm',
+            phoneNumber: '+237 670000000',
+            role: 'ADVERTISER',
+            createdAt: DateTime.now().toIso8601String(),
+          );
+          return _currentUser;
+        }
+        return null;
+      }
+    } catch (_) {
+      return null;
+    }
   }
 
   String? get token => _token;
@@ -105,6 +175,20 @@ class ApiService {
     }
   }
 
+  // Generic HTTP DELETE
+  Future<dynamic> delete(String url) async {
+    try {
+      final response = await http
+          .delete(Uri.parse(url), headers: _getHeaders())
+          .timeout(const Duration(seconds: 10));
+
+      return _processResponse(response);
+    } catch (e) {
+      if (e is HttpException) rethrow;
+      throw HttpException(0, 'Network request failed: $e');
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getBillboardAvailability({
     required int billboardId,
     DateTime? date,
@@ -161,8 +245,9 @@ class ApiService {
     });
 
     if (res['success'] == true && res['data'] != null) {
-      setToken(res['data']['token']);
-      _currentUser = UserModel.fromJson(res['data']['user']);
+      final token = res['data']['token'];
+      final user = UserModel.fromJson(res['data']['user']);
+      await saveSession(token, user);
       return _currentUser!;
     } else {
       throw Exception(res['message'] ?? 'Login failed');
@@ -185,18 +270,22 @@ class ApiService {
     });
 
     if (res['success'] == true && res['data'] != null) {
-      setToken(res['data']['token']);
-      _currentUser = UserModel.fromJson(res['data']['user']);
+      final token = res['data']['token'];
+      final user = UserModel.fromJson(res['data']['user']);
+      await saveSession(token, user);
       return _currentUser!;
     } else {
       throw Exception(res['message'] ?? 'Registration failed');
     }
   }
 
-  void logout() {
+  Future<void> logout() async {
     _token = null;
     _currentUser = null;
-    _secureStorage.delete(key: 'smartads_jwt');
+    try {
+      await _secureStorage.delete(key: 'smartads_jwt');
+      await _secureStorage.delete(key: 'smartads_user');
+    } catch (_) {}
   }
 
   // Profile Methods
@@ -293,6 +382,9 @@ class ApiService {
         screenSize: '4K UHD (3840x2160)',
         hourlyRate: 15000.0,
         status: 'ACTIVE',
+        availabilityStatus: 'AVAILABLE',
+        latitude: '4.0511',
+        longitude: '9.7679',
         description: 'High-traffic commercial display for retail and product launches.',
         qrCodeUrl:
             'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=SMARTADS_BB_1',
@@ -304,6 +396,9 @@ class ApiService {
         screenSize: 'Full HD (1920x1080)',
         hourlyRate: 12000.0,
         status: 'ACTIVE',
+        availabilityStatus: 'AVAILABLE',
+        latitude: '3.8830',
+        longitude: '11.5120',
         description: 'Prime highway visibility for brand awareness and promotions.',
         qrCodeUrl:
             'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=SMARTADS_BB_2',
@@ -315,9 +410,40 @@ class ApiService {
         screenSize: '2K Display (2560x1440)',
         hourlyRate: 8000.0,
         status: 'ACTIVE',
+        availabilityStatus: 'AVAILABLE',
+        latitude: '4.1560',
+        longitude: '9.2435',
         description: 'Campus-facing screen for youth, education and technology campaigns.',
         qrCodeUrl:
             'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=SMARTADS_BB_3',
+      ),
+      BillboardModel(
+        billboardId: 4,
+        billboardName: 'Limbe Beachfront LED Display',
+        location: 'Down Beach Road, Limbe',
+        screenSize: '4K Outdoor Screen',
+        hourlyRate: 10000.0,
+        status: 'ACTIVE',
+        availabilityStatus: 'AVAILABLE',
+        latitude: '4.0167',
+        longitude: '9.2167',
+        description: 'High leisure and tourist footfall area near the Atlantic coastline.',
+        qrCodeUrl:
+            'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=SMARTADS_BB_4',
+      ),
+      BillboardModel(
+        billboardId: 5,
+        billboardName: 'Bafoussam Central Market LED',
+        location: 'Marche A, Bafoussam',
+        screenSize: 'Full HD (1920x1080)',
+        hourlyRate: 9000.0,
+        status: 'ACTIVE',
+        availabilityStatus: 'AVAILABLE',
+        latitude: '5.4777',
+        longitude: '10.4176',
+        description: 'Bustling commercial hub in the West Region with maximum merchant audience.',
+        qrCodeUrl:
+            'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=SMARTADS_BB_5',
       ),
     ];
   }
@@ -512,5 +638,24 @@ class ApiService {
         billboardName: 'Buea Town Campus Digital Board',
       ),
     ];
+  }
+
+  String? _cachedMapsApiKey;
+
+  Future<String?> getGoogleMapsApiKey() async {
+    if (_cachedMapsApiKey != null && _cachedMapsApiKey!.isNotEmpty) {
+      return _cachedMapsApiKey;
+    }
+    try {
+      final res = await get(ApiConfig.configMapsKey);
+      if (res['success'] == true && res['data'] != null) {
+        final key = res['data']['apiKey']?.toString();
+        if (key != null && key.isNotEmpty) {
+          _cachedMapsApiKey = key;
+          return key;
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 }

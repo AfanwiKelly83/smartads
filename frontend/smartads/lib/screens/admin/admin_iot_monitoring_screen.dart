@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_colors.dart';
 import 'dart:async';
@@ -91,8 +91,8 @@ class _AdminIotMonitoringScreenState extends State<AdminIotMonitoringScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(device['status'], style: TextStyle(color: isOnline ? AppColors.statusOnline : AppColors.statusOffline, fontWeight: FontWeight.bold)),
-                            Text('Ping: \ms', style: const TextStyle(color: AppTheme.textSecondary)),
-                            Text('Uptime: \', style: const TextStyle(color: AppTheme.textSecondary)),
+                            Text('Ping: ${device['ping']}ms', style: const TextStyle(color: AppTheme.textSecondary)),
+                            Text('Uptime: ${device['uptime']}', style: const TextStyle(color: AppTheme.textSecondary)),
                           ],
                         ),
                       ],

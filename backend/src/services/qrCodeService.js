@@ -14,11 +14,13 @@ const generateBillboardQRCode = async (billboard) => {
   const qrFileName = `qr_billboard_${billboard.billboardId}.png`;
   const qrFilePath = path.join(qrDir, qrFileName);
 
-  const baseUrl = process.env.BILLBOARD_PUBLIC_URL || 'https://your-domain.com/billboards';
-  const qrTargetUrl = `${baseUrl}/${billboard.billboardId}`;
+  const code = billboard.billboardCode || `BILL-${String(billboard.billboardId).padStart(3, '0')}`;
+  const baseUrl = process.env.BILLBOARD_PUBLIC_URL || 'https://smartads.cm/billboard';
+  const qrTargetUrl = `${baseUrl}/${code}`;
 
   const payload = JSON.stringify({
     billboardId: billboard.billboardId,
+    billboardCode: code,
     billboardName: billboard.billboardName,
     location: billboard.location,
     url: qrTargetUrl

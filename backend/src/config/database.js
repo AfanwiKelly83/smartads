@@ -54,6 +54,8 @@ const ensureAdvertisementColumns = async () => {
 
   const columns = [
     ['verificationNotes', 'TEXT NULL'],
+    ['adminNotes', 'TEXT NULL'],
+    ['correctionReason', 'TEXT NULL'],
     ['aiConfidenceScore', 'FLOAT NULL'],
     ['aiFlaggedReason', 'VARCHAR(255) NULL'],
     ['playStartTime', 'VARCHAR(255) NULL'],
@@ -76,10 +78,103 @@ const ensureAdvertisementColumns = async () => {
         console.log(`✅ Added missing Advertisements.${name} column.`);
       }
     }
+
+    try {
+      await sequelize.query(
+        "ALTER TABLE `Advertisements` MODIFY COLUMN `approvalStatus` ENUM('PENDING_AI_REVIEW', 'AI_APPROVED', 'AI_REJECTED', 'AI_FLAGGED', 'MANUAL_REVIEW', 'APPROVED', 'REJECTED', 'PENDING') NOT NULL DEFAULT 'PENDING_AI_REVIEW';"
+      );
+    } catch (_) {}
   } catch (err) {
     // The table is created by sequelize.sync() during first startup.
     console.warn(`⚠️ Notice during advertisement schema check: ${err.message}`);
   }
+};
+
+const ensureBillboardColumns = async () => {
+  if (process.env.NODE_ENV === 'test') return;
+
+  const columns = [
+    ['billboardCode', 'VARCHAR(255) NULL'],
+    ['ownerId', 'INT NULL'],
+    ['address', 'VARCHAR(255) NULL'],
+    ['description', 'TEXT NULL'],
+    ['billboardType', "VARCHAR(255) DEFAULT 'SMART_TV'"],
+    ['width', 'VARCHAR(255) NULL'],
+    ['height', 'VARCHAR(255) NULL'],
+    ['resolution', "VARCHAR(255) DEFAULT '1920x1080'"],
+    ['pricePerHour', 'FLOAT NOT NULL DEFAULT 15000.0'],
+    ['approvalStatus', "ENUM('PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'SUSPENDED', 'UNPUBLISHED') DEFAULT 'PENDING_APPROVAL'"],
+    ['displayStatus', "ENUM('ACTIVE', 'INACTIVE', 'MAINTENANCE') DEFAULT 'ACTIVE'"],
+    ['availabilityStatus', "ENUM('AVAILABLE', 'BOOKED', 'UNAVAILABLE') DEFAULT 'AVAILABLE'"],
+    ['operatingHours', "VARCHAR(255) DEFAULT '06:00 - 22:00'"],
+    ['images', 'TEXT NULL'],
+    ['videoDemo', 'VARCHAR(255) NULL'],
+    ['technicalSpecs', 'TEXT NULL'],
+    ['additionalInfo', 'TEXT NULL'],
+    ['qrCode', 'VARCHAR(255) NULL'],
+    ['latitude', 'FLOAT NULL'],
+    ['longitude', 'FLOAT NULL'],
+    ['screenSize', 'VARCHAR(255) NULL']
+  ];
+
+  try {
+    const [existingColumns] = await sequelize.query(
+      'SHOW COLUMNS FROM `Billboards`;'
+    );
+    const existingNames = new Set(
+      existingColumns.map((column) => column.Field.toLowerCase())
+    );
+
+    for (const [name, definition] of columns) {
+      if (!existingNames.has(name.toLowerCase())) {
+        await sequelize.query(
+          `ALTER TABLE \`Billboards\` ADD COLUMN \`${name}\` ${definition};`
+        );
+        console.log(`✅ Added missing Billboards.${name} column.`);
+      }
+    }
+  } catch (err) {
+    console.warn(`⚠️ Notice during billboard schema check: ${err.message}`);
+  }
+};
+
+const ensureBookingColumns = async () => {
+  if (process.env.NODE_ENV === 'test') return;
+
+  const columns = [
+    ['startTime', "VARCHAR(255) DEFAULT '00:00'"],
+    ['endTime', "VARCHAR(255) DEFAULT '23:59'"],
+    ['repeatOption', "VARCHAR(255) DEFAULT 'DAILY'"],
+    ['status', "ENUM('PENDING', 'CONFIRMED', 'REJECTED', 'EXPIRED') DEFAULT 'PENDING'"],
+    ['totalAmount', 'FLOAT DEFAULT 0.0']
+  ];
+
+  try {
+    const [existingColumns] = await sequelize.query(
+      'SHOW COLUMNS FROM `Bookings`;'
+    );
+    const existingNames = new Set(
+      existingColumns.map((column) => column.Field.toLowerCase())
+    );
+
+    for (const [name, definition] of columns) {
+      if (!existingNames.has(name.toLowerCase())) {
+        await sequelize.query(
+          `ALTER TABLE \`Bookings\` ADD COLUMN \`${name}\` ${definition};`
+        );
+        console.log(`✅ Added missing Bookings.${name} column.`);
+      }
+    }
+  } catch (err) {
+    console.warn(`⚠️ Notice during booking schema check: ${err.message}`);
+  }
+};
+
+const ensureAllSchemaColumns = async () => {
+  await ensureUserRoleValues();
+  await ensureBillboardColumns();
+  await ensureAdvertisementColumns();
+  await ensureBookingColumns();
 };
 
 let sequelize;
@@ -113,5 +208,8 @@ if (process.env.NODE_ENV === 'test') {
 sequelize.ensureDatabaseExists = ensureDatabaseExists;
 sequelize.ensureUserRoleValues = ensureUserRoleValues;
 sequelize.ensureAdvertisementColumns = ensureAdvertisementColumns;
+sequelize.ensureBillboardColumns = ensureBillboardColumns;
+sequelize.ensureBookingColumns = ensureBookingColumns;
+sequelize.ensureAllSchemaColumns = ensureAllSchemaColumns;
 
 module.exports = sequelize;

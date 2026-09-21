@@ -61,6 +61,11 @@ class AdvertisementModel {
     );
   }
 
+  bool get isAiApproved => verificationStatus == 'AI_APPROVED' || verificationStatus == 'APPROVED';
+  bool get isAiFlagged => verificationStatus == 'AI_FLAGGED' || verificationStatus == 'MANUAL_REVIEW';
+  bool get isAiRejected => verificationStatus == 'AI_REJECTED' || verificationStatus == 'REJECTED';
+  bool get isPendingReview => verificationStatus == 'PENDING_AI_REVIEW' || verificationStatus == 'PENDING';
+
   Map<String, dynamic> toJson() {
     return {
       'advertisementId': advertisementId,

@@ -28,14 +28,14 @@ class StreetImageBackground extends StatelessWidget {
               ),
         ),
 
-        // Dark overlay — deeper at top and bottom for better text contrast
+        // Soft translucent overlay — lightened so the background image remains vibrant and visible
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                AppTheme.bgDark.withValues(alpha: 0.75),
-                AppTheme.bgDark.withValues(alpha: 0.82),
-                AppTheme.bgDark.withValues(alpha: 0.92),
+                AppTheme.bgDark.withValues(alpha: 0.18),
+                AppTheme.bgDark.withValues(alpha: 0.28),
+                AppTheme.bgDark.withValues(alpha: 0.42),
               ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -44,15 +44,15 @@ class StreetImageBackground extends StatelessWidget {
           ),
         ),
 
-        // Left-right vignette to focus the eye on center
+        // Subtle edge vignette
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                Colors.black.withValues(alpha: 0.4),
+                Colors.black.withValues(alpha: 0.15),
                 Colors.transparent,
                 Colors.transparent,
-                Colors.black.withValues(alpha: 0.4),
+                Colors.black.withValues(alpha: 0.15),
               ],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,

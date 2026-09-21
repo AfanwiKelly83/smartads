@@ -36,10 +36,27 @@ const Advertisement = sequelize.define('Advertisement', {
     defaultValue: DataTypes.NOW
   },
   approvalStatus: {
-    type: DataTypes.ENUM('PENDING', 'APPROVED', 'REJECTED'),
-    defaultValue: 'PENDING'
+    type: DataTypes.ENUM(
+      'PENDING_AI_REVIEW',
+      'AI_APPROVED',
+      'AI_REJECTED',
+      'AI_FLAGGED',
+      'MANUAL_REVIEW',
+      'APPROVED',
+      'REJECTED',
+      'PENDING'
+    ),
+    defaultValue: 'PENDING_AI_REVIEW'
   },
   verificationNotes: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  adminNotes: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  correctionReason: {
     type: DataTypes.TEXT,
     allowNull: true
   },

@@ -91,43 +91,13 @@ const verifyWithOpenRouter = async (imageUrls, mediaType) => {
   return parseModelResult(payload.choices?.[0]?.message?.content || '');
 };
 
-const verifyAdMedia = async (filePath, mediaType) => {
-  const ext = path.extname(filePath).toLowerCase();
-  const allowedExtensions = mediaType === 'VIDEO' ? allowedVideoExts : allowedImageExts;
-  if (!allowedExtensions.includes(ext)) {
-    return { status: 'REJECTED', confidenceScore: 0.99, notes: `Invalid ${mediaType.toLowerCase()} format (${ext}).`, flaggedReason: 'FORMAT_MISMATCH' };
-  }
+const { verifyAdvertisementContent } = require('./geminiService');
 
-  if (!/^https?:\/\//i.test(filePath)) {
-    try {
-      const stats = await fs.promises.stat(filePath);
-      if (stats.size > 50 * 1024 * 1024) {
-        return { status: 'REJECTED', confidenceScore: 0.99, notes: 'File size exceeds the 50MB AI verification limit.', flaggedReason: 'FILE_TOO_LARGE' };
-      }
-    } catch (_) {
-      return pending('The uploaded file is no longer available.');
-    }
-  }
-
-  let frameFiles = [];
-  let frameDirectory;
-  try {
-    if (mediaType === 'VIDEO') {
-      if (/^https?:\/\//i.test(filePath)) return pending('Remote videos must be uploaded before AI frame verification.');
-      ({ files: frameFiles, directory: frameDirectory } = await extractVideoFrames(filePath));
-      if (!frameFiles.length) return pending('No video frames could be extracted.');
-    }
-    const imageUrls = mediaType === 'VIDEO'
-      ? await Promise.all(frameFiles.map(toImageUrl))
-      : [await toImageUrl(filePath)];
-    return await verifyWithOpenRouter(imageUrls, mediaType);
-  } catch (error) {
-    return pending(error.message || 'AI verification could not be completed.');
-  } finally {
-    if (frameDirectory) await fs.promises.rm(frameDirectory, { recursive: true, force: true });
-  }
+const verifyAdMedia = async (filePath, mediaType, title = '') => {
+  return await verifyAdvertisementContent(filePath, mediaType, title);
 };
 
 module.exports = {
-  verifyAdMedia
+  verifyAdMedia,
+  verifyAdvertisementContent
 };

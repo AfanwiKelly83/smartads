@@ -21,25 +21,30 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _initApp() async {
     try {
-      final auth = AuthService();
-      await Future.delayed(const Duration(milliseconds: 600));
+      // Short delay so splash branding and animations render smoothly
+      await Future.delayed(const Duration(milliseconds: 900));
 
+      final auth = AuthService();
       final user = await auth.restoreSession();
+
+      if (!mounted) return;
+
       if (user != null) {
-        try {
-          if (!mounted) return;
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const MainNavigationScreen(),
-            ),
-          );
-          return;
-        } catch (_) {}
+        // User already logged in -> Go directly to Home / MainNavigationScreen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const MainNavigationScreen(),
+          ),
+        );
+        return;
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[SplashScreen] Auth restore check error: $e');
+    }
 
     if (!mounted) return;
+    // User not logged in -> Go to LandingScreen
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const LandingScreen()),

@@ -48,6 +48,7 @@ class ApiConfig {
   static String get notifications => '$baseUrl/notifications';
   static String get iotDevices => '$baseUrl/iot/devices';
   static String get iotHeartbeat => '$baseUrl/iot/heartbeat';
+  static String get configMapsKey => '$baseUrl/config/maps-key';
 
   // ── Health check ──────────────────────────────────────────────────────────
   static String get health => '$baseUrl/health';

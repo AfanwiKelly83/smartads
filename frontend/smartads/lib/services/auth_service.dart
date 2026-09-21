@@ -43,27 +43,22 @@ class AuthService {
   }
 
   // ── Logout ─────────────────────────────────────────────────────────────────
-  void logout() {
+  Future<void> logout() async {
     _currentUser = null;
-    ApiService().logout();
+    await ApiService().logout();
   }
 
-  /// Restores the authenticated user after the JWT has been loaded from storage.
+  /// Restores the authenticated user after the JWT and cached profile have been loaded from storage.
   Future<User?> restoreSession() async {
-    final token = ApiService().token;
-    if (token == null || token.isEmpty) {
-      _currentUser = null;
-      return null;
-    }
-
     try {
-      final userModel = await ApiService().fetchProfile();
-      _setCurrentUser(userModel);
-      return _currentUser;
-    } catch (_) {
-      _currentUser = null;
-      return null;
-    }
+      final userModel = await ApiService().restoreSession();
+      if (userModel != null) {
+        _setCurrentUser(userModel);
+        return _currentUser;
+      }
+    } catch (_) {}
+    _currentUser = null;
+    return null;
   }
 
   // ── Helper ─────────────────────────────────────────────────────────────────

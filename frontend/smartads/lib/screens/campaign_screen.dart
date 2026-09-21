@@ -479,3 +479,4 @@ class _CampaignScreenState extends State<CampaignScreen> {
     );
   }
 }
+

@@ -1,6 +1,7 @@
 const app = require('./app');
 const { sequelize } = require('./models');
 const { checkExpiredCampaigns } = require('./services/schedulerService');
+const { seedDefaultUsers } = require('./utils/seedDefaultUsers');
 const dotenv = require('dotenv');
 
 dotenv.config();
@@ -25,10 +26,13 @@ const startServer = async () => {
 
     // Synchronize Sequelize Models with Database
     await sequelize.sync();
-    if (typeof sequelize.ensureAdvertisementColumns === 'function') {
-      await sequelize.ensureAdvertisementColumns();
+    if (typeof sequelize.ensureAllSchemaColumns === 'function') {
+      await sequelize.ensureAllSchemaColumns();
     }
     console.log('Database schema synchronized successfully');
+
+    // Auto-seed default test users & sample data
+    await seedDefaultUsers();
 
     // Start background cron jobs (running every 60 seconds)
     setInterval(async () => {

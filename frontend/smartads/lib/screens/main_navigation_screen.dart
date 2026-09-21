@@ -12,6 +12,13 @@ import 'analytics_iot_screen.dart';
 import 'auth_page.dart';
 import '../widgets/street_image_background.dart';
 
+import 'owner/owner_billboards_screen.dart';
+import 'owner/add_billboard_screen.dart';
+import 'owner/owner_bookings_screen.dart';
+import 'owner/owner_advertisements_screen.dart';
+import 'owner/owner_earnings_screen.dart';
+import 'advertiser/advertiser_bookings_screen.dart';
+
 class MainNavigationScreen extends StatefulWidget {
   final int initialTabIndex;
   final bool isNewRegistration;
@@ -30,6 +37,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   late int _currentIndex;
 
   bool get _isAdmin => AuthService().currentUser?.isAdmin == true;
+  bool get _isOwner => AuthService().currentUser?.isOwner == true;
   bool get _isAdvertiser {
     final user = AuthService().currentUser;
     return user?.isAdvertiser == true || user?.role == 'USER';
@@ -42,6 +50,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         _NavigationItem('Billboards', Icons.tv_rounded),
         _NavigationItem('Manage Profile', Icons.account_circle_rounded),
         _NavigationItem('IoT & Analytics', Icons.insights_rounded),
+      ];
+    }
+
+    if (_isOwner) {
+      return const [
+        _NavigationItem('Dashboard', Icons.dashboard_rounded),
+        _NavigationItem('My Billboards', Icons.tv_rounded),
+        _NavigationItem('Add Billboard', Icons.add_location_alt_rounded),
+        _NavigationItem('Bookings', Icons.calendar_month_rounded),
+        _NavigationItem('Advertisements', Icons.play_circle_fill_rounded),
+        _NavigationItem('Earnings', Icons.account_balance_wallet_rounded),
+        _NavigationItem('IoT Status', Icons.developer_board_rounded),
+        _NavigationItem('Profile', Icons.account_circle_rounded),
       ];
     }
 
@@ -68,12 +89,25 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ];
     }
 
+    if (_isOwner) {
+      return [
+        _buildRoleDashboard(),
+        OwnerBillboardsScreen(onAddBillboard: () => _onTabSelected(2)),
+        const AddBillboardScreen(),
+        const OwnerBookingsScreen(),
+        const OwnerAdvertisementsScreen(),
+        const OwnerEarningsScreen(),
+        const AnalyticsIotScreen(),
+        const ProfileScreen(),
+      ];
+    }
+
     if (_isAdvertiser) {
       return [
         _buildRoleDashboard(),
         const BillboardScreen(),
         const CampaignScreen(),
-        _buildRoleDashboard(),
+        AdvertiserBookingsScreen(onNavigateTab: _onTabSelected),
         const ProfileScreen(),
       ];
     }

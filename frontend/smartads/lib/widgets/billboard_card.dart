@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 import '../models/billboard_model.dart';
 import 'qr_code_dialog.dart';
@@ -253,6 +254,32 @@ class BillboardCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                     ],
+
+                    // Google Maps Button
+                    IconButton(
+                      tooltip: 'View on Google Maps',
+                      onPressed: () async {
+                        final uri = Uri.parse(billboard.googleMapsUrl);
+                        try {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        } catch (_) {
+                          await launchUrl(uri);
+                        }
+                      },
+                      icon: const Icon(
+                        Icons.map_rounded,
+                        color: AppTheme.accentLight,
+                        size: 20,
+                      ),
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppTheme.cardDark,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: const BorderSide(color: AppTheme.borderSubtle),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
 
                     // Book Now Button
                     Expanded(
