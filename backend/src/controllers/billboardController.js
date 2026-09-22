@@ -1,5 +1,6 @@
 const { Billboard, User, Notification } = require('../models');
 const { generateBillboardQRCode } = require('../services/qrCodeService');
+const { getBillboardCapacityAvailability, getBillboardTimeSlots } = require('../services/availabilityService');
 const { Op } = require('sequelize');
 
 /**
@@ -31,6 +32,7 @@ const createBillboard = async (req, res, next) => {
       height,
       resolution,
       pricePerHour,
+      maxActiveCampaigns,
       operatingHours,
       images,
       videoDemo,
@@ -58,6 +60,7 @@ const createBillboard = async (req, res, next) => {
     const parsedLat = latitude !== undefined && latitude !== null && latitude !== '' ? parseFloat(latitude) : null;
     const parsedLng = longitude !== undefined && longitude !== null && longitude !== '' ? parseFloat(longitude) : null;
     const parsedRate = pricePerHour !== undefined && pricePerHour !== null && pricePerHour !== '' ? parseFloat(pricePerHour) : 15000.0;
+    const parsedMaxCampaigns = maxActiveCampaigns !== undefined && maxActiveCampaigns !== null && maxActiveCampaigns !== '' ? Math.max(1, parseInt(maxActiveCampaigns, 10)) : 10;
 
     const billboardCode = await generateUniqueBillboardCode();
 
@@ -74,6 +77,7 @@ const createBillboard = async (req, res, next) => {
       height: height ? String(height) : '1080',
       resolution: resolution || '1920x1080',
       pricePerHour: parsedRate,
+      maxActiveCampaigns: parsedMaxCampaigns,
       operatingHours: operatingHours || '06:00 - 22:00',
       images: images || null,
       videoDemo: videoDemo || null,
@@ -251,6 +255,7 @@ const updateBillboard = async (req, res, next) => {
       height,
       resolution,
       pricePerHour,
+      maxActiveCampaigns,
       operatingHours,
       images,
       videoDemo,
@@ -272,6 +277,9 @@ const updateBillboard = async (req, res, next) => {
     if (height) billboard.height = String(height);
     if (resolution) billboard.resolution = resolution;
     if (pricePerHour !== undefined) billboard.pricePerHour = parseFloat(pricePerHour);
+    if (maxActiveCampaigns !== undefined && maxActiveCampaigns !== null && maxActiveCampaigns !== '') {
+      billboard.maxActiveCampaigns = Math.max(1, parseInt(maxActiveCampaigns, 10));
+    }
     if (operatingHours) billboard.operatingHours = operatingHours;
     if (images) billboard.images = images;
     if (videoDemo) billboard.videoDemo = videoDemo;
@@ -294,6 +302,38 @@ const updateBillboard = async (req, res, next) => {
       success: true,
       message: 'Billboard updated successfully.',
       data: billboard
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /api/v1/billboards/:id/availability?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+const getBillboardAvailability = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate, date } = req.query;
+
+    const queryStart = startDate || date || new Date().toISOString().slice(0, 10);
+    const queryEnd = endDate || queryStart;
+
+    const capacityData = await getBillboardCapacityAvailability({
+      billboardId: Number(id),
+      startDate: queryStart,
+      endDate: queryEnd
+    });
+
+    const slots = await getBillboardTimeSlots({
+      billboardId: Number(id),
+      date: queryStart
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        ...capacityData,
+        slots
+      }
     });
   } catch (err) {
     next(err);
@@ -388,7 +428,9 @@ module.exports = {
   getAllBillboards,
   getMyBillboards,
   getBillboardById,
+  getBillboardAvailability,
   updateBillboard,
   updateApprovalStatus,
   deleteBillboard
 };
+

@@ -3,9 +3,10 @@ const { PlaybackLog, Campaign, Billboard, Advertisement } = require('../models')
 // POST /api/tracking/log
 const logPlayback = async (req, res, next) => {
   try {
-    const { billboardId, campaignId, adId, durationPlayed, status, errorMessage } = req.body;
+    const { billboardId, campaignId, adId, advertisementId, durationPlayed, status, errorMessage } = req.body;
+    const resolvedAdId = adId || advertisementId;
 
-    if (!billboardId || !campaignId || !adId) {
+    if (!billboardId || !campaignId || !resolvedAdId) {
       return res.status(400).json({
         success: false,
         message: 'billboardId, campaignId, and adId are required.'
@@ -15,11 +16,10 @@ const logPlayback = async (req, res, next) => {
     const log = await PlaybackLog.create({
       billboardId,
       campaignId,
-      adId,
+      advertisementId: resolvedAdId,
       playedAt: new Date(),
       durationPlayed: durationPlayed || 15,
-      status: status || 'SUCCESS',
-      errorMessage: errorMessage || null
+      status: status || 'SUCCESS'
     });
 
     return res.status(201).json({
@@ -37,9 +37,7 @@ const getCampaignTracking = async (req, res, next) => {
   try {
     const { campaignId } = req.params;
 
-    const campaign = await Campaign.findByPk(campaignId, {
-      include: [{ model: Advertisement, as: 'advertisement' }]
-    });
+    const campaign = await Campaign.findByPk(campaignId);
 
     if (!campaign) {
       return res.status(404).json({ success: false, message: 'Campaign not found.' });
@@ -55,13 +53,12 @@ const getCampaignTracking = async (req, res, next) => {
       success: true,
       data: {
         campaignId,
-        campaignName: campaign.name,
-        adTitle: campaign.advertisement ? campaign.advertisement.title : null,
+        campaignType: campaign.campaignType,
         totalPlays,
         successfulPlays,
         errorPlays,
         totalAirTimeMinutes: (totalAirTimeSeconds / 60).toFixed(2),
-        deliveryProgressPercentage: Math.min(100, Math.round((successfulPlays / 100) * 100)) // Scaled progress percentage
+        deliveryProgressPercentage: Math.min(100, Math.round((successfulPlays / 100) * 100))
       }
     });
   } catch (err) {
@@ -79,8 +76,8 @@ const getBillboardLogs = async (req, res, next) => {
       order: [['playedAt', 'DESC']],
       limit: 100,
       include: [
-        { model: Campaign, as: 'campaign', attributes: ['id', 'name'] },
-        { model: Advertisement, as: 'advertisement', attributes: ['id', 'title'] }
+        { model: Campaign, as: 'campaign', attributes: ['campaignId', 'campaignType', 'campaignStatus'] },
+        { model: Advertisement, as: 'advertisement', attributes: ['advertisementId', 'title', 'mediaType'] }
       ]
     });
 

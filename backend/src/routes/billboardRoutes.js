@@ -5,6 +5,7 @@ const {
   getAllBillboards,
   getMyBillboards,
   getBillboardById,
+  getBillboardAvailability,
   updateBillboard,
   updateApprovalStatus,
   deleteBillboard
@@ -13,6 +14,7 @@ const { requireAuth, requireRole } = require('../middlewares/authMiddleware');
 
 router.get('/', getAllBillboards);
 router.get('/my-billboards', requireAuth, requireRole('ADMIN', 'BILLBOARD_OWNER'), getMyBillboards);
+router.get('/:id/availability', getBillboardAvailability);
 router.get('/:id', getBillboardById);
 
 // Billboard creation & management (Admin or Billboard Owner)

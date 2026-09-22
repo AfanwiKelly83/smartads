@@ -11,6 +11,7 @@ class BillboardModel {
   final String? height;
   final String resolution;
   final double hourlyRate;
+  final int maxActiveCampaigns;
   final String status;
   final String approvalStatus;
   final String availabilityStatus;
@@ -37,6 +38,7 @@ class BillboardModel {
     this.height,
     this.resolution = '1920x1080',
     required this.hourlyRate,
+    this.maxActiveCampaigns = 10,
     required this.status,
     this.approvalStatus = 'APPROVED',
     this.availabilityStatus = 'AVAILABLE',
@@ -55,6 +57,8 @@ class BillboardModel {
     final rawId = json['billboardId'] ?? json['id'] ?? 0;
     final bId = rawId is int ? rawId : int.tryParse(rawId.toString()) ?? 0;
     final code = (json['billboardCode'] ?? 'BILL-${String.fromCharCode(65 + (bId % 26))}${bId.toString().padLeft(3, '0')}').toString();
+    final maxCampaignsRaw = json['maxActiveCampaigns'] ?? json['maxCapacity'] ?? 10;
+    final maxCampaigns = maxCampaignsRaw is int ? maxCampaignsRaw : int.tryParse(maxCampaignsRaw.toString()) ?? 10;
 
     return BillboardModel(
       billboardId: bId,
@@ -73,6 +77,7 @@ class BillboardModel {
           : json['hourlyRate'] != null
           ? (json['hourlyRate'] as num).toDouble()
           : 15000.0,
+      maxActiveCampaigns: maxCampaigns,
       status: json['displayStatus'] ?? json['status'] ?? 'ACTIVE',
       approvalStatus: (json['approvalStatus'] ?? 'APPROVED').toString().toUpperCase(),
       availabilityStatus: (json['availabilityStatus'] ?? 'AVAILABLE').toString().toUpperCase(),
@@ -114,6 +119,7 @@ class BillboardModel {
       'height': height,
       'resolution': resolution,
       'pricePerHour': hourlyRate,
+      'maxActiveCampaigns': maxActiveCampaigns,
       'status': status,
       'approvalStatus': approvalStatus,
       'availabilityStatus': availabilityStatus,

@@ -13,6 +13,7 @@ class AuthService {
 
   User? _currentUser;
   User? get currentUser => _currentUser;
+  set currentUser(User? user) => _currentUser = user;
 
   // ── Login ──────────────────────────────────────────────────────────────────
   /// Throws an exception with a user-readable message on failure.

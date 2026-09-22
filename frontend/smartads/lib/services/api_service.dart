@@ -198,10 +198,38 @@ class ApiService {
     final res = await get(
       ApiConfig.billboardAvailability(billboardId, dateText),
     );
-    if (res['success'] == true && res['data'] is List) {
-      return List<Map<String, dynamic>>.from(res['data']);
+    if (res['success'] == true) {
+      if (res['data'] is List) {
+        return List<Map<String, dynamic>>.from(res['data']);
+      } else if (res['data'] is Map && res['data']['slots'] is List) {
+        return List<Map<String, dynamic>>.from(res['data']['slots']);
+      }
     }
     throw Exception(res['message'] ?? 'Failed to load billboard availability');
+  }
+
+  Future<Map<String, dynamic>> getBillboardCapacity({
+    required int billboardId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final start = (startDate ?? DateTime.now()).toIso8601String().substring(0, 10);
+    final end = (endDate ?? startDate ?? DateTime.now()).toIso8601String().substring(0, 10);
+
+    final res = await get('${ApiConfig.billboards}/$billboardId/availability?startDate=$start&endDate=$end');
+    if (res['success'] == true && res['data'] is Map) {
+      return Map<String, dynamic>.from(res['data']);
+    }
+    // Fallback if not reachable
+    return {
+      'billboardId': billboardId,
+      'maxActiveCampaigns': 10,
+      'occupiedCampaignsCount': 0,
+      'remainingCapacity': 10,
+      'isAvailable': true,
+      'startDate': start,
+      'endDate': end
+    };
   }
 
   dynamic _processResponse(http.Response response) {

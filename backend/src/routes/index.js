@@ -12,6 +12,8 @@ const notificationRoutes = require('./notificationRoutes');
 const analyticsRoutes = require('./analyticsRoutes');
 const iotRoutes = require('./iotRoutes');
 const configRoutes = require('./configRoutes');
+const schedulerRoutes = require('./schedulerRoutes');
+const trackingRoutes = require('./trackingRoutes');
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
@@ -24,5 +26,7 @@ router.use('/notifications', notificationRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/iot', iotRoutes);
 router.use('/config', configRoutes);
+router.use('/scheduler', schedulerRoutes);
+router.use('/tracking', trackingRoutes);
 
 module.exports = router;

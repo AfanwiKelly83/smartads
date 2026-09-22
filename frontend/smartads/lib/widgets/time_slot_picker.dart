@@ -174,7 +174,7 @@ class _TimeSlotPickerModalState extends State<TimeSlotPickerModal> {
 
   String get _dateDisplay {
     final d = widget.selectedDate ?? DateTime.now();
-    return '${d.year}-${d.month.toString().padStart(2, '0')}-${d.day.toString().padStart(2, '0')}';
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -202,7 +202,10 @@ class _TimeSlotPickerModalState extends State<TimeSlotPickerModal> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             const Text(
                               'TIME SLOT AVAILABILITY & ATTRIBUTED PRICING',
@@ -213,7 +216,6 @@ class _TimeSlotPickerModalState extends State<TimeSlotPickerModal> {
                                 letterSpacing: 0.8,
                               ),
                             ),
-                            const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
@@ -328,7 +330,7 @@ class _TimeSlotPickerModalState extends State<TimeSlotPickerModal> {
                   ),
                   child: const Center(
                     child: Text(
-                      'All slots on this billboard are currently booked for the selected date.',
+                      'No available time slots.',
                       style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                     ),
                   ),
@@ -561,7 +563,7 @@ class _TimeSlotPickerModalState extends State<TimeSlotPickerModal> {
                         size: 16,
                       ),
                       label: const Text(
-                        'CONFIRM SLOT',
+                        'CONFIRM TIME SLOT',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,

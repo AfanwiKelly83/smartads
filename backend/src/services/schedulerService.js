@@ -3,17 +3,22 @@ const { Op } = require('sequelize');
 
 /**
  * Smart Scheduler Service
- * Calculates dynamic playback rotation for digital billboard display players
+ * Calculates dynamic shared playlist rotation for digital billboard display players
+ * Preserves media duration (e.g., 5s, 15s, 30s, 60s) in a fair round-robin cycle.
  */
 const getActivePlaylistForBillboard = async (billboardId) => {
   const currentDate = new Date().toISOString().split('T')[0];
-  const currentTime = new Date().toTimeString().slice(0, 5); // "HH:MM"
 
-  // Find active bookings on this billboard
+  const billboard = await Billboard.findByPk(billboardId);
+  if (!billboard) {
+    throw new Error('Billboard not found');
+  }
+
+  // Find confirmed active bookings on this billboard within today's date range
   const activeBookings = await Booking.findAll({
     where: {
       billboardId,
-      status: 'CONFIRMED',
+      status: { [Op.in]: ['CONFIRMED', 'PAID'] },
       startDate: { [Op.lte]: currentDate },
       endDate: { [Op.gte]: currentDate }
     },
@@ -21,39 +26,62 @@ const getActivePlaylistForBillboard = async (billboardId) => {
       {
         model: Campaign,
         as: 'campaign',
-        where: { status: 'ACTIVE' },
-        include: [
-          {
-            model: Advertisement,
-            as: 'advertisement',
-            where: { verificationStatus: 'APPROVED' }
-          }
-        ]
+        required: false
       }
-    ]
+    ],
+    order: [['bookingId', 'ASC']]
   });
 
-  const playlist = activeBookings.map((booking) => {
-    const campaign = booking.campaign;
-    const ad = campaign.advertisement;
-    return {
-      bookingId: booking.id,
-      campaignId: campaign.id,
-      campaignName: campaign.name,
-      adId: ad.id,
-      adTitle: ad.title,
-      mediaUrl: ad.mediaUrl,
-      mediaType: ad.mediaType,
-      durationSeconds: ad.durationSeconds || 15,
-      startTime: booking.startTime,
-      endTime: booking.endTime
-    };
-  });
+  const playlist = [];
+
+  for (let i = 0; i < activeBookings.length; i++) {
+    const booking = activeBookings[i];
+    
+    // Find approved advertisement for this campaign or advertiser
+    let ad = await Advertisement.findOne({
+      where: {
+        advertiserId: booking.advertiserId,
+        approvalStatus: { [Op.in]: ['APPROVED', 'AI_APPROVED'] }
+      },
+      order: [['updatedAt', 'DESC']]
+    });
+
+    const durationSeconds = (ad && ad.fileSize && ad.mediaType === 'VIDEO') 
+      ? Math.min(60, Math.max(5, Math.round(ad.fileSize / (1024 * 1024) * 5))) 
+      : 15;
+
+    const mediaUrl = ad ? (ad.filePath || `/uploads/${ad.advertisementId}`) : '/uploads/default-placeholder.mp4';
+    const mediaType = ad ? (ad.mediaType || 'VIDEO') : 'IMAGE';
+    const adTitle = ad ? ad.title : (booking.campaign ? `Campaign #${booking.campaignId}` : `Booking #${booking.bookingId}`);
+    const adId = ad ? ad.advertisementId : booking.bookingId;
+
+    playlist.push({
+      slotOrder: i + 1,
+      bookingId: booking.bookingId,
+      campaignId: booking.campaignId,
+      campaignName: booking.campaign ? (booking.campaign.campaignType || 'STANDARD') : 'Standard Campaign',
+      advertisementId: adId,
+      adTitle,
+      mediaUrl,
+      mediaType,
+      durationSeconds,
+      startDate: booking.startDate,
+      endDate: booking.endDate,
+      startTime: booking.startTime || '00:00',
+      endTime: booking.endTime || '23:59'
+    });
+  }
+
+  const cycleDurationSeconds = playlist.reduce((total, item) => total + item.durationSeconds, 0);
 
   return {
-    billboardId,
+    billboardId: Number(billboardId),
+    billboardName: billboard.billboardName,
+    maxActiveCampaigns: billboard.maxActiveCampaigns || 10,
     timestamp: new Date().toISOString(),
-    totalAds: playlist.length,
+    activeCampaignsCount: playlist.length,
+    cycleDurationSeconds,
+    rotationMode: 'FAIR_ROUND_ROBIN',
     playlist
   };
 };

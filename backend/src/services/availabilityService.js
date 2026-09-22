@@ -119,7 +119,58 @@ const getBillboardTimeSlots = async ({ billboardId, date }) => {
   });
 };
 
+/**
+ * Calculate billboard capacity and availability for a requested date range.
+ * Overlap formula: existingStart <= requestedEnd AND existingEnd >= requestedStart
+ */
+const getBillboardCapacityAvailability = async ({ billboardId, startDate, endDate, excludeBookingId, transaction }) => {
+  const billboard = await Billboard.findByPk(billboardId, { transaction });
+  if (!billboard) {
+    throw new Error('Billboard not found');
+  }
+
+  const maxCapacity = billboard.maxActiveCampaigns || 10;
+  const targetStartDate = startDate || new Date().toISOString().slice(0, 10);
+  const targetEndDate = endDate || targetStartDate;
+
+  const whereClause = {
+    billboardId,
+    status: { [Op.in]: ['PENDING', 'CONFIRMED'] },
+    [Op.and]: [
+      { startDate: { [Op.lte]: targetEndDate } },
+      { endDate: { [Op.gte]: targetStartDate } }
+    ]
+  };
+
+  if (excludeBookingId) {
+    whereClause.bookingId = { [Op.ne]: excludeBookingId };
+  }
+
+  const overlappingBookings = await Booking.findAll({
+    where: whereClause,
+    attributes: ['bookingId', 'campaignId', 'startDate', 'endDate', 'startTime', 'endTime', 'status', 'totalAmount'],
+    transaction
+  });
+
+  const occupiedCount = overlappingBookings.length;
+  const remainingCapacity = Math.max(0, maxCapacity - occupiedCount);
+  const isAvailable = remainingCapacity > 0;
+
+  return {
+    billboardId: Number(billboardId),
+    billboardName: billboard.billboardName,
+    maxActiveCampaigns: maxCapacity,
+    occupiedCampaignsCount: occupiedCount,
+    remainingCapacity,
+    isAvailable,
+    startDate: targetStartDate,
+    endDate: targetEndDate,
+    overlappingBookings
+  };
+};
+
 module.exports = {
   checkBillboardAvailability,
-  getBillboardTimeSlots
+  getBillboardTimeSlots,
+  getBillboardCapacityAvailability
 };

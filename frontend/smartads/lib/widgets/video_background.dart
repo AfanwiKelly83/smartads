@@ -13,7 +13,7 @@ class VideoBackground extends StatefulWidget {
 }
 
 class _VideoBackgroundState extends State<VideoBackground> {
-  late VideoPlayerController _controller;
+  VideoPlayerController? _controller;
   bool _isVideoInitialized = false;
   bool _hasError = false;
 
@@ -25,15 +25,16 @@ class _VideoBackgroundState extends State<VideoBackground> {
 
   Future<void> _initializeVideo() async {
     try {
-      _controller = VideoPlayerController.asset('assets/videos/billboard_street.mp4');
-      await _controller.initialize();
-      _controller.setLooping(true);
-      _controller.setVolume(0.0);
+      final controller = VideoPlayerController.asset('assets/videos/billboard_street.mp4');
+      _controller = controller;
+      await controller.initialize();
+      controller.setLooping(true);
+      controller.setVolume(0.0);
       if (mounted) {
         setState(() {
           _isVideoInitialized = true;
         });
-        _controller.play();
+        controller.play();
       }
     } catch (e) {
       if (mounted) {
@@ -46,13 +47,14 @@ class _VideoBackgroundState extends State<VideoBackground> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_hasError || !_isVideoInitialized) {
+    final controller = _controller;
+    if (_hasError || !_isVideoInitialized || controller == null) {
       // Fallback to static street image background if video fails or is loading
       return StreetImageBackground(child: widget.child);
     }
@@ -63,9 +65,9 @@ class _VideoBackgroundState extends State<VideoBackground> {
         FittedBox(
           fit: BoxFit.cover,
           child: SizedBox(
-            width: _controller.value.size.width,
-            height: _controller.value.size.height,
-            child: VideoPlayer(_controller),
+            width: controller.value.size.width,
+            height: controller.value.size.height,
+            child: VideoPlayer(controller),
           ),
         ),
         // Light translucent overlay to keep background video vibrant while ensuring text legibility

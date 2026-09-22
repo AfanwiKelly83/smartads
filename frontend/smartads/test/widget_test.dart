@@ -10,18 +10,23 @@ void main() {
   ) async {
     await tester.pumpWidget(const MaterialApp(home: LandingScreen()));
 
-    expect(find.text('SmartAds'), findsOneWidget);
-    expect(find.text('LOGIN'), findsOneWidget);
-    expect(find.text('REGISTER'), findsOneWidget);
+    expect(find.text('SMARTADS'), findsWidgets);
+    expect(find.text('Get Started'), findsOneWidget);
+    expect(find.text('I Already Have an Account'), findsOneWidget);
 
-    await tester.tap(find.text('LOGIN'));
-    await tester.pumpAndSettle();
+    await tester.tap(find.text('I Already Have an Account'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.byType(AuthPage), findsOneWidget);
     expect(find.text('SIGN IN'), findsOneWidget);
 
     Navigator.of(tester.element(find.byType(AuthPage))).pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('REGISTER'));
+    await tester.tap(find.text('Get Started'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pumpAndSettle();
     expect(find.byType(AuthPage), findsOneWidget);
     expect(find.text('CREATE ACCOUNT'), findsOneWidget);
@@ -42,15 +47,15 @@ void main() {
       ),
     );
 
-    expect(find.text('08:00 AM - 09:00 AM'), findsOneWidget);
-    await tester.ensureVisible(find.text('08:00 AM - 09:00 AM'));
-    await tester.tap(find.text('08:00 AM - 09:00 AM'));
+    expect(find.text('08:00 AM - 10:00 AM'), findsOneWidget);
+    await tester.ensureVisible(find.text('08:00 AM - 10:00 AM'));
+    await tester.tap(find.text('08:00 AM - 10:00 AM'));
     await tester.pump();
     await tester.ensureVisible(find.text('CONFIRM TIME SLOT'));
     await tester.tap(find.text('CONFIRM TIME SLOT'));
     await tester.pump();
 
-    expect(selectedSlot, '08:00 AM - 09:00 AM');
+    expect(selectedSlot, '08:00 AM - 10:00 AM');
   });
 
   testWidgets('time slot picker handles no available slots', (
@@ -85,7 +90,7 @@ void main() {
           hourlyRate: 1000,
           availableTimeSlots: const [
             {
-              'time': '08:00 AM - 09:00 AM',
+              'time': '08:00 AM - 10:00 AM',
               'isFree': false,
               'occupant': 'Reserved',
             },

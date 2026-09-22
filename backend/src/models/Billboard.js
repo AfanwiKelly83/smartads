@@ -57,6 +57,14 @@ const Billboard = sequelize.define('Billboard', {
     allowNull: false,
     defaultValue: 15000.0
   },
+  maxActiveCampaigns: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 10,
+    validate: {
+      min: 1
+    }
+  },
   approvalStatus: {
     type: DataTypes.ENUM('PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'SUSPENDED', 'UNPUBLISHED'),
     defaultValue: 'PENDING_APPROVAL'

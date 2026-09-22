@@ -69,6 +69,7 @@ class BillboardService {
     String? height,
     String? resolution,
     required double pricePerHour,
+    int? maxActiveCampaigns,
     String? operatingHours,
     String? images,
     String? videoDemo,
@@ -88,6 +89,7 @@ class BillboardService {
       'height': height ?? '1080',
       'resolution': resolution ?? '1920x1080',
       'pricePerHour': pricePerHour,
+      if (maxActiveCampaigns != null) 'maxActiveCampaigns': maxActiveCampaigns,
       'operatingHours': operatingHours ?? '06:00 - 22:00',
       'images': images,
       'videoDemo': videoDemo,
@@ -128,6 +130,7 @@ class BillboardService {
     String? height,
     String? resolution,
     double? pricePerHour,
+    int? maxActiveCampaigns,
     String? operatingHours,
     String? displayStatus,
     String? availabilityStatus,
@@ -145,6 +148,7 @@ class BillboardService {
     if (height != null) body['height'] = height;
     if (resolution != null) body['resolution'] = resolution;
     if (pricePerHour != null) body['pricePerHour'] = pricePerHour;
+    if (maxActiveCampaigns != null) body['maxActiveCampaigns'] = maxActiveCampaigns;
     if (operatingHours != null) body['operatingHours'] = operatingHours;
     if (displayStatus != null) body['displayStatus'] = displayStatus;
     if (availabilityStatus != null) body['availabilityStatus'] = availabilityStatus;

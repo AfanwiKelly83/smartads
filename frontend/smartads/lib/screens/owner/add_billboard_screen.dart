@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:http/http.dart' as http;
 import '../../utils/app_colors.dart';
@@ -22,6 +22,7 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
   final _addressController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _rateController = TextEditingController(text: '15000');
+  final _maxCampaignsController = TextEditingController(text: '10');
   final _sizeController = TextEditingController(text: 'Smart TV HD (1920x1080)');
   final _widthController = TextEditingController(text: '1920');
   final _heightController = TextEditingController(text: '1080');
@@ -44,6 +45,7 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
     _addressController.dispose();
     _descriptionController.dispose();
     _rateController.dispose();
+    _maxCampaignsController.dispose();
     _sizeController.dispose();
     _widthController.dispose();
     _heightController.dispose();
@@ -63,6 +65,7 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
 
       try {
         final rate = double.tryParse(_rateController.text.trim()) ?? 15000.0;
+        final maxCampaigns = int.tryParse(_maxCampaignsController.text.trim()) ?? 10;
         final billboard = await BillboardService().createBillboard(
           billboardName: _nameController.text.trim(),
           location: _locationController.text.trim(),
@@ -77,6 +80,7 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
           height: _heightController.text.trim(),
           resolution: _resolutionController.text.trim(),
           pricePerHour: rate,
+          maxActiveCampaigns: maxCampaigns,
           operatingHours: _operatingHoursController.text.trim(),
           images: _imageUrlController.text.trim().isNotEmpty
               ? _imageUrlController.text.trim()
@@ -603,21 +607,51 @@ class _AddBillboardScreenState extends State<AddBillboardScreen> {
                     ),
                     const SizedBox(height: 18),
 
-                    // 4. Hourly Rate
-                    TextFormField(
-                      controller: _rateController,
-                      keyboardType: TextInputType.number,
-                      validator: (v) => Validators.validateRequired(v, 'Hourly Rate'),
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: 'Hourly Rate (FCFA) *',
-                        hintText: '15000',
-                        labelStyle: const TextStyle(color: AppColors.textSecondary),
-                        prefixIcon: const Icon(Icons.monetization_on_rounded, color: AppColors.accentLight),
-                        filled: true,
-                        fillColor: AppColors.inputBg,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+                    // 4. Rate & Capacity Row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _rateController,
+                            keyboardType: TextInputType.number,
+                            validator: (v) => Validators.validateRequired(v, 'Hourly Rate'),
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              labelText: 'Hourly Rate (FCFA) *',
+                              hintText: '15000',
+                              labelStyle: const TextStyle(color: AppColors.textSecondary),
+                              prefixIcon: const Icon(Icons.monetization_on_rounded, color: AppColors.accentLight),
+                              filled: true,
+                              fillColor: AppColors.inputBg,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _maxCampaignsController,
+                            keyboardType: TextInputType.number,
+                            validator: (v) {
+                              final num = int.tryParse(v?.trim() ?? '');
+                              if (num == null || num < 1) {
+                                return 'Enter capacity >= 1';
+                              }
+                              return null;
+                            },
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              labelText: 'Max Active Campaigns *',
+                              hintText: '10',
+                              labelStyle: const TextStyle(color: AppColors.textSecondary),
+                              prefixIcon: const Icon(Icons.layers_rounded, color: AppColors.accentLight),
+                              filled: true,
+                              fillColor: AppColors.inputBg,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 18),
 

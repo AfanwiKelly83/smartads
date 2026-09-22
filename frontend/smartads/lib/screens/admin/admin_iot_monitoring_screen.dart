@@ -4,7 +4,8 @@ import '../../utils/app_colors.dart';
 import 'dart:async';
 
 class AdminIotMonitoringScreen extends StatefulWidget {
-  const AdminIotMonitoringScreen({super.key});
+  final bool enablePeriodicUpdates;
+  const AdminIotMonitoringScreen({super.key, this.enablePeriodicUpdates = true});
 
   @override
   State<AdminIotMonitoringScreen> createState() => _AdminIotMonitoringScreenState();
@@ -21,14 +22,15 @@ class _AdminIotMonitoringScreenState extends State<AdminIotMonitoringScreen> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (mounted) {
-        setState(() {
-          // Mock some heartbeat updates
-          _esp32Devices[0]['ping'] = 40 + (DateTime.now().second % 10);
-        });
-      }
-    });
+    if (widget.enablePeriodicUpdates) {
+      _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+        if (mounted) {
+          setState(() {
+            _esp32Devices[0]['ping'] = 40 + (DateTime.now().second % 10);
+          });
+        }
+      });
+    }
   }
 
   @override
@@ -39,64 +41,233 @@ class _AdminIotMonitoringScreenState extends State<AdminIotMonitoringScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isMobile = size.width < 600;
+
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
       appBar: AppBar(
         backgroundColor: AppTheme.surfaceDark,
-        title: const Text('IoT Monitoring Panel', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        elevation: 0,
+        title: const Text(
+          'IoT Monitoring Panel',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+        ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 12 : 24,
+          vertical: isMobile ? 14 : 24,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'ESP32 / RASPBERRY PI DEVICE STATUS',
-              style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'ESP32 / RASPBERRY PI DEVICE STATUS',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFF10B981), width: 0.8),
+                  ),
+                  child: const Text(
+                    'TELEMETRY LIVE',
+                    style: TextStyle(
+                      color: Color(0xFF10B981),
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Expanded(
               child: ListView.builder(
                 itemCount: _esp32Devices.length,
                 itemBuilder: (context, index) {
                   final device = _esp32Devices[index];
                   final isOnline = device['status'] == 'ONLINE';
+                  final statusColor = isOnline ? AppColors.statusOnline : AppColors.statusOffline;
+
                   return Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.all(20),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: EdgeInsets.all(isMobile ? 14 : 18),
                     decoration: BoxDecoration(
                       color: AppTheme.surfaceDark,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: isOnline ? AppColors.statusOnline : AppColors.statusOffline),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          isOnline ? Icons.router_rounded : Icons.portable_wifi_off_rounded,
-                          color: isOnline ? AppColors.statusOnline : AppColors.statusOffline,
-                          size: 32,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(device['id'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                              Text(device['location'], style: const TextStyle(color: AppTheme.textSecondary)),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(device['status'], style: TextStyle(color: isOnline ? AppColors.statusOnline : AppColors.statusOffline, fontWeight: FontWeight.bold)),
-                            Text('Ping: ${device['ping']}ms', style: const TextStyle(color: AppTheme.textSecondary)),
-                            Text('Uptime: ${device['uptime']}', style: const TextStyle(color: AppTheme.textSecondary)),
-                          ],
+                      border: Border.all(
+                        color: statusColor.withValues(alpha: 0.5),
+                        width: 1.1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
+                    child: isMobile
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: statusColor.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      isOnline ? Icons.router_rounded : Icons.portable_wifi_off_rounded,
+                                      color: statusColor,
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          device['id'],
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        Text(
+                                          device['location'],
+                                          style: const TextStyle(
+                                            color: AppTheme.textSecondary,
+                                            fontSize: 11.5,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: statusColor.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: statusColor, width: 0.8),
+                                    ),
+                                    child: Text(
+                                      device['status'],
+                                      style: TextStyle(
+                                        color: statusColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 9.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: AppColors.cardDark,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Ping: ${device['ping']}ms',
+                                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                                    ),
+                                    Text(
+                                      'Uptime: ${device['uptime']}',
+                                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  isOnline ? Icons.router_rounded : Icons.portable_wifi_off_rounded,
+                                  color: statusColor,
+                                  size: 28,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      device['id'],
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                    Text(
+                                      device['location'],
+                                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: statusColor.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: statusColor, width: 0.8),
+                                    ),
+                                    child: Text(
+                                      device['status'],
+                                      style: TextStyle(
+                                        color: statusColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Ping: ${device['ping']}ms • Uptime: ${device['uptime']}',
+                                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                   );
                 },
               ),

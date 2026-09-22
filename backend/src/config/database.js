@@ -103,6 +103,7 @@ const ensureBillboardColumns = async () => {
     ['height', 'VARCHAR(255) NULL'],
     ['resolution', "VARCHAR(255) DEFAULT '1920x1080'"],
     ['pricePerHour', 'FLOAT NOT NULL DEFAULT 15000.0'],
+    ['maxActiveCampaigns', 'INT NOT NULL DEFAULT 10'],
     ['approvalStatus', "ENUM('PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'SUSPENDED', 'UNPUBLISHED') DEFAULT 'PENDING_APPROVAL'"],
     ['displayStatus', "ENUM('ACTIVE', 'INACTIVE', 'MAINTENANCE') DEFAULT 'ACTIVE'"],
     ['availabilityStatus', "ENUM('AVAILABLE', 'BOOKED', 'UNAVAILABLE') DEFAULT 'AVAILABLE'"],

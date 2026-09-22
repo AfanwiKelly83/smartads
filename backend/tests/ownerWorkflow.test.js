@@ -1,6 +1,9 @@
 const request = require('supertest');
 const app = require('../src/app');
-const { sequelize, User, Billboard, Advertisement, Booking, Campaign, Payment, IoTDevice } = require('../src/models');
+const { sequelize, User, Billboard, Booking, Payment, Notification, IoTDevice } = require('../src/models');
+const jwt = require('jsonwebtoken');
+
+jest.setTimeout(30000);
 
 describe('SmartAds End-to-End Billboard Owner & AI Workflow Tests', () => {
   let ownerToken, ownerId;

@@ -28,9 +28,18 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
   int _step = 1;
   bool _isLoading = false;
   bool _isLoadingSlots = false;
+  bool _isLoadingCapacity = false;
   AdvertisementModel? _uploadedAd;
 
-  DateTime? _selectedDate = DateTime.now();
+  DateTime _startDate = DateTime.now();
+  DateTime _endDate = DateTime.now().add(const Duration(days: 3));
+  int _selectedPresetDays = 3;
+
+  int _maxCapacity = 10;
+  int _occupiedCapacity = 0;
+  int _remainingCapacity = 10;
+  bool _isCapacityAvailable = true;
+
   int _selectedSlotIndex = -1;
   String? _selectedSlot;
   String? _selectedSlotStartTime;
@@ -40,6 +49,17 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
   double? _calculatedPrice;
 
   final List<Map<String, dynamic>> _defaultTimeSlots = [
+    {
+      'time': 'Full Day Dynamic Rotation (All Hours)',
+      'startTime': '00:00',
+      'endTime': '23:59',
+      'label': 'Fair Shared Broadcast (Round-Robin)',
+      'tier': 'PRIME',
+      'price': 40000.0,
+      'duration': 'Full Day',
+      'isFree': true,
+      'occupant': null,
+    },
     {
       'time': '06:00 AM - 07:00 AM',
       'startTime': '06:00',
@@ -59,8 +79,8 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
       'tier': 'STANDARD',
       'price': 3500.0,
       'duration': '1 Hour',
-      'isFree': false,
-      'occupant': 'Reserved (Orange Campaign)',
+      'isFree': true,
+      'occupant': null,
     },
     {
       'time': '08:00 AM - 10:00 AM',
@@ -92,8 +112,8 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
       'tier': 'PRIME',
       'price': 6500.0,
       'duration': '2 Hours',
-      'isFree': false,
-      'occupant': 'Reserved (MTN MoMo)',
+      'isFree': true,
+      'occupant': null,
     },
     {
       'time': '02:00 PM - 04:00 PM',
@@ -114,8 +134,8 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
       'tier': 'PRIME',
       'price': 7000.0,
       'duration': '2 Hours',
-      'isFree': false,
-      'occupant': 'Reserved (Tech Expo)',
+      'isFree': true,
+      'occupant': null,
     },
     {
       'time': '06:00 PM - 08:00 PM',
@@ -159,10 +179,26 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
   String? _error;
   final _titleController = TextEditingController();
 
+  int get _campaignDays {
+    final diff = _endDate.difference(_startDate).inDays;
+    return diff >= 0 ? diff + 1 : 1;
+  }
+
+  double get _computedTotalPrice {
+    if (_calculatedPrice != null) {
+      return _calculatedPrice! * _campaignDays;
+    }
+    final dailyBase = widget.billboard.hourlyRate * 4;
+    return dailyBase * _campaignDays;
+  }
+
   @override
   void initState() {
     super.initState();
+    _maxCapacity = widget.billboard.maxActiveCampaigns;
+    _remainingCapacity = _maxCapacity;
     _timeSlots = List.from(_defaultTimeSlots);
+    _loadCapacityAndAvailability();
   }
 
   void _next() => setState(() {
@@ -175,28 +211,57 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
         if (_step > 1) _step -= 1;
       });
 
-  Future<void> _loadAvailability() async {
-    if (_selectedDate == null) return;
-    setState(() => _isLoadingSlots = true);
+  Future<void> _loadCapacityAndAvailability() async {
+    setState(() {
+      _isLoadingCapacity = true;
+      _isLoadingSlots = true;
+    });
+
     try {
+      final capData = await ApiService().getBillboardCapacity(
+        billboardId: widget.billboard.billboardId,
+        startDate: _startDate,
+        endDate: _endDate,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _maxCapacity = capData['maxActiveCampaigns'] ?? widget.billboard.maxActiveCampaigns;
+        _occupiedCapacity = capData['occupiedCampaignsCount'] ?? 0;
+        _remainingCapacity = capData['remainingCapacity'] ?? (_maxCapacity - _occupiedCapacity);
+        _isCapacityAvailable = capData['isAvailable'] ?? (_remainingCapacity > 0);
+      });
+
       final slots = await ApiService().getBillboardAvailability(
         billboardId: widget.billboard.billboardId,
-        date: _selectedDate,
+        date: _startDate,
       );
+
       if (!mounted) return;
       if (slots.isNotEmpty) {
         setState(() {
           _timeSlots = slots;
-          _selectedSlotIndex = -1;
-          _selectedSlot = null;
-          _calculatedPrice = null;
         });
       }
     } catch (_) {
-      // Fallback to default slots
+      // Keep fallback
     } finally {
-      if (mounted) setState(() => _isLoadingSlots = false);
+      if (mounted) {
+        setState(() {
+          _isLoadingCapacity = false;
+          _isLoadingSlots = false;
+        });
+      }
     }
+  }
+
+  void _selectPresetDays(int days) {
+    setState(() {
+      _selectedPresetDays = days;
+      _endDate = _startDate.add(Duration(days: days - 1));
+    });
+    _loadCapacityAndAvailability();
   }
 
   Future<void> _uploadAd() async {
@@ -229,8 +294,13 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
   }
 
   Future<void> _processPayment() async {
-    if (_uploadedAd == null || _selectedDate == null || _selectedSlot == null) {
-      setState(() => _error = 'Missing booking details');
+    if (_uploadedAd == null) {
+      setState(() => _error = 'Missing advertisement creative');
+      return;
+    }
+
+    if (!_isCapacityAvailable) {
+      setState(() => _error = 'Billboard capacity is full for the selected dates. Please choose another date range.');
       return;
     }
 
@@ -244,11 +314,11 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
         'billboardId': widget.billboard.billboardId,
         'campaignId': 1,
         'advertisementId': _uploadedAd!.advertisementId,
-        'startDate': _selectedDate!.toIso8601String().split('T')[0],
-        'endDate': _selectedDate!.toIso8601String().split('T')[0],
-        'startTime': _selectedSlotStartTime ?? '08:00',
-        'endTime': _selectedSlotEndTime ?? '10:00',
-        'amount': _calculatedPrice,
+        'startDate': _startDate.toIso8601String().split('T')[0],
+        'endDate': _endDate.toIso8601String().split('T')[0],
+        'startTime': _selectedSlotStartTime ?? '00:00',
+        'endTime': _selectedSlotEndTime ?? '23:59',
+        'amount': _computedTotalPrice,
       };
 
       final res = await ApiService().post(ApiConfig.bookings, body);
@@ -264,9 +334,9 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
           context: context,
           builder: (context) => PaymentModal(
             bookingId: bookingId,
-            amount: _calculatedPrice ?? (widget.billboard.hourlyRate * 2),
+            amount: _computedTotalPrice,
             itemTitle:
-                '${widget.billboard.billboardName} | ${_selectedSlot ?? ''}',
+                '${widget.billboard.billboardName} ($_campaignDays Days Campaign)',
           ),
         );
 
@@ -290,44 +360,181 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
   }
 
   Widget _buildStep1Date() {
+    final startStr = '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}';
+    final endStr = '${_endDate.year}-${_endDate.month.toString().padLeft(2, '0')}-${_endDate.day.toString().padLeft(2, '0')}';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'STEP 1 — Select Date',
+          'STEP 1 — Campaign Period & Duration',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
         ),
+        const SizedBox(height: 6),
+        const Text(
+          'Select your broadcast schedule. Digital billboards rotate up to 10 concurrent campaigns in round-robin sequence.',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        ),
         const SizedBox(height: 16),
+
+        // Quick preset duration buttons
+        const Text(
+          'POPULAR CAMPAIGN DURATIONS',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [1, 3, 7, 14, 30].map((days) {
+            final isSelected = _selectedPresetDays == days;
+            final label = days == 1 ? '1 Day' : days == 7 ? '1 Week' : days == 14 ? '2 Weeks' : days == 30 ? '1 Month (30d)' : '$days Days';
+            return ChoiceChip(
+              label: Text(label),
+              selected: isSelected,
+              selectedColor: AppColors.accentPrimary,
+              backgroundColor: AppColors.cardDark,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.white : AppColors.textSecondary,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 12,
+              ),
+              onSelected: (val) {
+                if (val) _selectPresetDays(days);
+              },
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+
+        // Date selection cards
         Container(
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.cardDark,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.borderSubtle),
           ),
-          padding: const EdgeInsets.all(8),
-          child: CalendarDatePicker(
-            initialDate: _selectedDate ?? DateTime.now(),
-            firstDate: DateTime.now(),
-            lastDate: DateTime.now().add(const Duration(days: 90)),
-            onDateChanged: (date) {
-              setState(() => _selectedDate = date);
-            },
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('START DATE', style: TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 6),
+                        InkWell(
+                          onTap: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: _startDate,
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime.now().add(const Duration(days: 180)),
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                _startDate = picked;
+                                if (_endDate.isBefore(_startDate)) {
+                                  _endDate = _startDate.add(Duration(days: _selectedPresetDays - 1));
+                                }
+                              });
+                              _loadCapacityAndAvailability();
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: AppColors.inputBg,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.accentPrimary.withValues(alpha: 0.4)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.accentLight),
+                                const SizedBox(width: 8),
+                                Text(startStr, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('END DATE', style: TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 6),
+                        InkWell(
+                          onTap: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: _endDate,
+                              firstDate: _startDate,
+                              lastDate: _startDate.add(const Duration(days: 365)),
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                _endDate = picked;
+                                _selectedPresetDays = _endDate.difference(_startDate).inDays + 1;
+                              });
+                              _loadCapacityAndAvailability();
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: AppColors.inputBg,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.accentPrimary.withValues(alpha: 0.4)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.event_available_rounded, size: 16, color: AppColors.accentLight),
+                                const SizedBox(width: 8),
+                                Text(endStr, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Duration: $_campaignDays ${_campaignDays == 1 ? "Day" : "Days"}',
+                    style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  Text(
+                    'Estimated Cost: ${_computedTotalPrice.toStringAsFixed(0)} FCFA',
+                    style: const TextStyle(color: AppColors.accentLight, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
         PrimaryButton(
-          text: 'CONTINUE TO TIME SLOTS',
+          text: 'CONTINUE TO CAPACITY OVERVIEW',
           onPressed: () {
-            if (_selectedDate != null) {
-              _loadAvailability();
-              _next();
-            } else {
-              setState(() => _error = 'Please select a date');
-            }
+            _loadCapacityAndAvailability();
+            _next();
           },
         ),
       ],
@@ -335,9 +542,9 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
   }
 
   Widget _buildStep2Time() {
-    final dateStr = _selectedDate != null
-        ? '${_selectedDate!.year}-${_selectedDate!.month.toString().padStart(2, '0')}-${_selectedDate!.day.toString().padStart(2, '0')}'
-        : 'Today';
+    final startStr = '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}';
+    final endStr = '${_endDate.year}-${_endDate.month.toString().padLeft(2, '0')}-${_endDate.day.toString().padLeft(2, '0')}';
+    final double occupancyPercent = _maxCapacity > 0 ? (_occupiedCapacity / _maxCapacity).clamp(0.0, 1.0) : 0.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,7 +553,7 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              'STEP 2 — Select Time Slot & Attributed Price',
+              'STEP 2 — Live Capacity & Schedule',
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.bold,
@@ -361,7 +568,7 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
                 border: Border.all(color: AppColors.accentPrimary),
               ),
               child: Text(
-                dateStr,
+                '$startStr → $endStr',
                 style: const TextStyle(
                   color: AppColors.accentLight,
                   fontSize: 11,
@@ -373,66 +580,108 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
         ),
         const SizedBox(height: 12),
 
-        // Legend
+        // Live Billboard Capacity Status Card
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: AppColors.cardDark,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: AppColors.borderSubtle.withValues(alpha: 0.3),
+              color: _isCapacityAvailable
+                  ? const Color(0xFF10B981).withValues(alpha: 0.5)
+                  : const Color(0xFFEF4444).withValues(alpha: 0.6),
             ),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF10B981),
-                  shape: BoxShape.circle,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.layers_rounded,
+                        color: _isCapacityAvailable ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'SHARED ROTATION CAPACITY',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _isCapacityAvailable
+                          ? const Color(0xFF10B981).withValues(alpha: 0.2)
+                          : const Color(0xFFEF4444).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      _isCapacityAvailable
+                          ? 'AVAILABLE ($_remainingCapacity SPACES LEFT)'
+                          : 'CAPACITY FULL (0 SPACES LEFT)',
+                      style: TextStyle(
+                        color: _isCapacityAvailable ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: occupancyPercent,
+                  minHeight: 8,
+                  backgroundColor: AppColors.inputBg,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    occupancyPercent >= 1.0
+                        ? const Color(0xFFEF4444)
+                        : occupancyPercent > 0.7
+                            ? Colors.amber
+                            : const Color(0xFF10B981),
+                  ),
                 ),
               ),
-              const SizedBox(width: 6),
-              const Text(
-                'AVAILABLE',
-                style: TextStyle(
-                  color: Color(0xFF10B981),
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 18),
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFEF4444),
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                'OCCUPIED / BOOKED',
-                style: TextStyle(
-                  color: Color(0xFFEF4444),
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              const Text(
-                'Select free slot',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 10),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '$_occupiedCapacity of $_maxCapacity active campaigns occupied',
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                  ),
+                  Text(
+                    '$_remainingCapacity spots open',
+                    style: const TextStyle(color: AppColors.accentLight, fontWeight: FontWeight.bold, fontSize: 11),
+                  ),
+                ],
               ),
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
+
+        // Optional specific broadcast slot selection
+        const Text(
+          'BROADCAST TIME PREFERENCE (OPTIONAL)',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
 
         if (_isLoadingSlots)
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 40),
+            padding: EdgeInsets.symmetric(vertical: 30),
             child: Center(
               child: CircularProgressIndicator(color: AppColors.accentPrimary),
             ),
@@ -451,7 +700,7 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
             itemBuilder: (context, index) {
               final slot = _timeSlots[index];
               final bool isFree = slot['isFree'] == true;
-              final bool isSelected = _selectedSlotIndex == index && isFree;
+              final bool isSelected = _selectedSlotIndex == index;
               final slotPrice = slot['price'] != null
                   ? (slot['price'] as num).toDouble()
                   : widget.billboard.hourlyRate;
@@ -463,14 +712,9 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
                         setState(() {
                           _selectedSlotIndex = index;
                           _selectedSlot = slot['time'];
-                          _selectedSlotStartTime = slot['startTime'] ??
-                              (slot['time']?.toString().split(' - ')[0] ??
-                                  '08:00');
-                          _selectedSlotEndTime = slot['endTime'] ??
-                              (slot['time']?.toString().split(' - ')[1] ??
-                                  '10:00');
-                          _selectedSlotDuration =
-                              slot['duration'] ?? 'Standard';
+                          _selectedSlotStartTime = slot['startTime'] ?? '00:00';
+                          _selectedSlotEndTime = slot['endTime'] ?? '23:59';
+                          _selectedSlotDuration = slot['duration'] ?? '$_campaignDays Days';
                           _selectedSlotLabel = slotLabel;
                           _calculatedPrice = slotPrice;
                           _error = null;
@@ -485,105 +729,48 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: isFree
-                        ? (isSelected
-                            ? AppColors.accentPrimary.withValues(alpha: 0.85)
-                            : AppColors.cardDark)
-                        : AppColors.inputBg.withValues(alpha: 0.4),
+                    color: isSelected
+                        ? AppColors.accentPrimary.withValues(alpha: 0.85)
+                        : AppColors.cardDark,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isFree
-                          ? (isSelected
-                              ? Colors.white
-                              : const Color(0xFF10B981)
-                                  .withValues(alpha: 0.7))
-                          : const Color(0xFFEF4444).withValues(alpha: 0.4),
+                      color: isSelected
+                          ? Colors.white
+                          : (isFree
+                              ? const Color(0xFF10B981).withValues(alpha: 0.6)
+                              : const Color(0xFFEF4444).withValues(alpha: 0.4)),
                       width: isSelected ? 2 : 1,
                     ),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: AppColors.accentPrimary
-                                  .withValues(alpha: 0.4),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                          ]
-                        : null,
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Top Row: Time and Price
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
-                            child: Row(
-                              children: [
-                                Icon(
-                                  isFree
-                                      ? Icons.access_time_filled_rounded
-                                      : Icons.lock_clock_rounded,
-                                  color: isFree
-                                      ? (isSelected
-                                          ? Colors.white
-                                          : const Color(0xFF10B981))
-                                      : const Color(0xFFEF4444),
-                                  size: 13,
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    slot['time'] ?? '',
-                                    style: TextStyle(
-                                      color: isFree
-                                          ? Colors.white
-                                          : AppColors.textMuted,
-                                      fontWeight: isSelected || !isFree
-                                          ? FontWeight.bold
-                                          : FontWeight.w600,
-                                      fontSize: 10,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              slot['time'] ?? '',
+                              style: TextStyle(
+                                color: isFree ? Colors.white : AppColors.textMuted,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 10,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 5,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isFree
-                                  ? (isSelected
-                                      ? Colors.white.withValues(alpha: 0.25)
-                                      : AppColors.accentPrimary
-                                          .withValues(alpha: 0.2))
-                                  : Colors.red.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '${slotPrice.toStringAsFixed(0)} FCFA',
-                              style: TextStyle(
-                                color: isFree
-                                    ? (isSelected
-                                        ? Colors.white
-                                        : AppColors.accentLight)
-                                    : Colors.redAccent,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 9,
-                              ),
+                          Text(
+                            '${slotPrice.toStringAsFixed(0)} FCFA',
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : AppColors.accentLight,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 9,
                             ),
                           ),
                         ],
                       ),
-
-                      // Bottom Row: Tier Label and Status Badge
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -591,40 +778,19 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
                             child: Text(
                               slotLabel,
                               style: TextStyle(
-                                color: isSelected
-                                    ? Colors.white70
-                                    : AppColors.textSecondary,
+                                color: isSelected ? Colors.white70 : AppColors.textSecondary,
                                 fontSize: 8.5,
-                                fontWeight: FontWeight.w500,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 5,
-                              vertical: 1,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isFree
-                                  ? const Color(0xFF10B981)
-                                      .withValues(alpha: 0.2)
-                                  : const Color(0xFFEF4444)
-                                      .withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              isFree
-                                  ? 'AVAILABLE'
-                                  : (slot['occupant'] ?? 'OCCUPIED'),
-                              style: TextStyle(
-                                color: isFree
-                                    ? const Color(0xFF10B981)
-                                    : const Color(0xFFEF4444),
-                                fontSize: 7.5,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          Text(
+                            isFree ? 'OPEN' : 'BUSY',
+                            style: TextStyle(
+                              color: isFree ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
@@ -637,52 +803,63 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
           ),
         const SizedBox(height: 16),
 
-        // Price preview banner
-        if (_selectedSlotIndex >= 0)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.cardDark,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppColors.accentPrimary.withValues(alpha: 0.4),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'ATTRIBUTED SLOT PRICE',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      '${_calculatedPrice?.toStringAsFixed(0)} FCFA',
-                      style: const TextStyle(
-                        color: AppColors.accentLight,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  '${_selectedSlot ?? ''} (${_selectedSlotLabel ?? ''})',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+        // Campaign Pricing Card
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.cardDark,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.accentPrimary.withValues(alpha: 0.4),
             ),
           ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'CAMPAIGN TOTAL RATE',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '${_computedTotalPrice.toStringAsFixed(0)} FCFA',
+                    style: const TextStyle(
+                      color: AppColors.accentLight,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$_campaignDays ${_campaignDays == 1 ? "Day" : "Days"} Broadcast',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '${(widget.billboard.hourlyRate * 4).toStringAsFixed(0)} FCFA / day',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 16),
 
         Row(
@@ -699,14 +876,11 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
               child: PrimaryButton(
                 text: 'CONTINUE TO UPLOAD',
                 onPressed: () {
-                  if (_selectedSlot != null) {
-                    _next();
-                  } else {
-                    setState(
-                      () => _error =
-                          'Please select an available time slot to continue',
-                    );
+                  if (!_isCapacityAvailable) {
+                    setState(() => _error = 'This billboard is full for the selected dates. Please choose another date range.');
+                    return;
                   }
+                  _next();
                 },
               ),
             ),
@@ -901,11 +1075,14 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
   }
 
   Widget _buildStep4Summary() {
+    final startStr = '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}';
+    final endStr = '${_endDate.year}-${_endDate.month.toString().padLeft(2, '0')}-${_endDate.day.toString().padLeft(2, '0')}';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'STEP 4 — Booking Summary',
+          'STEP 4 — Campaign & Booking Summary',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -924,28 +1101,46 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Billboard: ${widget.billboard.billboardName}',
+                'Billboard: ${widget.billboard.billboardName} (${widget.billboard.billboardCode.isNotEmpty ? widget.billboard.billboardCode : "BILL-${widget.billboard.billboardId}"})',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                'Date: ${_selectedDate?.toIso8601String().split('T')[0]}',
-                style: const TextStyle(color: AppTheme.textSecondary),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Schedule: $startStr → $endStr',
+                    style: const TextStyle(color: AppTheme.textSecondary),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentPrimary.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '$_campaignDays ${_campaignDays == 1 ? "Day" : "Days"} Campaign',
+                      style: const TextStyle(color: AppColors.accentLight, fontWeight: FontWeight.bold, fontSize: 11),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               Text(
-                'Time Slot: $_selectedSlot (${_selectedSlotLabel ?? ''})',
-                style: const TextStyle(color: AppTheme.textSecondary),
+                'Display Capacity: $_occupiedCapacity / $_maxCapacity occupied • Round-robin dynamic playlist',
+                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Duration: ${_selectedSlotDuration ?? '2 Hours'}',
-                style: const TextStyle(color: AppTheme.textSecondary),
-              ),
+              if (_selectedSlot != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Time Focus: $_selectedSlot (${_selectedSlotLabel ?? ''})',
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                ),
+              ],
               const Divider(color: AppTheme.borderSubtle, height: 28),
               if (_uploadedAd != null) ...[
                 Row(
@@ -1031,7 +1226,7 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
               ],
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1045,7 +1240,7 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
                     ),
                   ),
                   Text(
-                    '${_calculatedPrice?.toStringAsFixed(0)} FCFA',
+                    '${_computedTotalPrice.toStringAsFixed(0)} FCFA',
                     style: const TextStyle(
                       color: AppTheme.accentPrimary,
                       fontSize: 20,
@@ -1085,7 +1280,7 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'STEP 5 — Payment',
+          'STEP 5 — Payment & Activation',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -1094,7 +1289,7 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
         ),
         const SizedBox(height: 16),
         const Text(
-          'Proceed to secure payment to confirm your booking and schedule the advertisement on the digital billboard.',
+          'Proceed to secure payment to confirm your booking and schedule your campaign rotation on the digital billboard.',
           style: TextStyle(color: AppTheme.textSecondary),
         ),
         const SizedBox(height: 24),
@@ -1110,8 +1305,7 @@ class _BookingFlowDialogState extends State<BookingFlowDialog> {
             const SizedBox(width: 16),
             Expanded(
               child: PrimaryButton(
-                text:
-                    'PAY ${_calculatedPrice != null ? "${_calculatedPrice!.toStringAsFixed(0)} FCFA" : "NOW"}',
+                text: 'PAY ${_computedTotalPrice.toStringAsFixed(0)} FCFA NOW',
                 isLoading: _isLoading,
                 onPressed: _processPayment,
               ),
