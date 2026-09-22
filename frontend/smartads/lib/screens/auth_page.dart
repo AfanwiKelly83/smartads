@@ -74,24 +74,19 @@ class _AuthPageState extends State<AuthPage> {
 
   Widget _buildAuthCard() {
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceDark,
+        color: AppTheme.surfaceDark.withValues(alpha: 0.65),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: AppTheme.accentPrimary.withValues(alpha: 0.25),
-          width: 1,
+          color: AppTheme.accentPrimary.withValues(alpha: 0.3),
+          width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.6),
-            blurRadius: 40,
-            offset: const Offset(0, 15),
-          ),
-          BoxShadow(
-            color: AppTheme.accentPrimary.withValues(alpha: 0.08),
-            blurRadius: 20,
-            spreadRadius: -2,
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
           ),
         ],
       ),

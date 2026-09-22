@@ -12,11 +12,8 @@ class BrandingHeader extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: isCompact ? 56 : 72,
-          height: isCompact ? 56 : 72,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: AppTheme.primaryGradient,
+            borderRadius: BorderRadius.circular(isCompact ? 16 : 22),
             boxShadow: [
               BoxShadow(
                 color: AppTheme.accentPrimary.withValues(alpha: 0.35),
@@ -25,41 +22,36 @@ class BrandingHeader extends StatelessWidget {
               ),
             ],
           ),
-          child: Center(
-            child: Container(
-              width: isCompact ? 48 : 64,
-              height: isCompact ? 48 : 64,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.bgDark,
-              ),
-              child: Icon(
-                Icons.campaign_rounded,
-                color: AppTheme.accentLight,
-                size: isCompact ? 28 : 36,
-              ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(isCompact ? 16 : 22),
+            child: Image.asset(
+              'assets/images/smartads_logo.png',
+              width: isCompact ? 64 : 88,
+              height: isCompact ? 64 : 88,
+              fit: BoxFit.contain,
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         ShaderMask(
           shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
           child: Text(
             'SmartAds',
             style: TextStyle(
-              fontSize: isCompact ? 26 : 34,
+              fontSize: isCompact ? 24 : 32,
               fontWeight: FontWeight.w900,
               color: Colors.white,
               letterSpacing: 1.2,
             ),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Text(
-          'Digital Billboard & Ad Management',
+          'Smarter Billboards. Greater Impact.',
           style: TextStyle(
-            fontSize: isCompact ? 12 : 14,
-            color: AppTheme.textSecondary,
+            fontSize: isCompact ? 11 : 13,
+            color: AppTheme.accentLight,
+            fontWeight: FontWeight.w500,
             letterSpacing: 0.4,
           ),
           textAlign: TextAlign.center,
@@ -75,19 +67,19 @@ class DesktopBrandingPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(48),
+      padding: const EdgeInsets.all(36),
       decoration: BoxDecoration(
-        gradient: AppTheme.darkCardGradient,
+        color: AppTheme.surfaceDark.withValues(alpha: 0.60),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: AppTheme.accentPrimary.withValues(alpha: 0.25),
-          width: 1,
+          color: AppTheme.accentPrimary.withValues(alpha: 0.3),
+          width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 30,
-            offset: const Offset(0, 10),
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 25,
+            offset: const Offset(0, 8),
           ),
         ],
       ),

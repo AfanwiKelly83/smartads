@@ -140,29 +140,21 @@ class _CampaignScreenState extends State<CampaignScreen> {
                           );
                           return;
                         }
+                        final chosenBillboard = _billboards.firstWhere(
+                          (b) => b.billboardId == selectedBillboardId,
+                          orElse: () => _billboards.first,
+                        );
+                        final parsedDate =
+                            DateTime.tryParse(startController.text.trim()) ??
+                                DateTime.now();
+
                         showDialog(
                           context: context,
                           builder: (context) => TimeSlotPickerModal(
-                            billboardId: _billboards
-                                .firstWhere(
-                                  (b) => b.billboardId == selectedBillboardId,
-                                  orElse: () => _billboards.first,
-                                )
-                                .billboardId,
-                            billboardName: _billboards
-                                .firstWhere(
-                                  (b) => b.billboardId == selectedBillboardId,
-                                  orElse: () => _billboards.first,
-                                )
-                                .billboardName,
-                            hourlyRate: _billboards
-                                .firstWhere(
-                                  (billboard) =>
-                                      billboard.billboardId ==
-                                      selectedBillboardId,
-                                  orElse: () => _billboards.first,
-                                )
-                                .hourlyRate,
+                            billboardId: chosenBillboard.billboardId,
+                            billboardName: chosenBillboard.billboardName,
+                            hourlyRate: chosenBillboard.hourlyRate,
+                            selectedDate: parsedDate,
                             onSlotSelected: (slotTime, duration, price) {
                               setModalState(() {
                                 selectedSlotText = '$slotTime ($duration)';

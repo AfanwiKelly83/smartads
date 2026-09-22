@@ -61,24 +61,47 @@ class _SplashScreenState extends State<SplashScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.accentPrimary.withValues(alpha: 0.4),
+                      blurRadius: 30,
+                      spreadRadius: 4,
+                    ),
+                  ],
                 ),
-                child: const Icon(
-                  Icons.hub_rounded,
-                  size: 48,
-                  color: Colors.white,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Image.asset(
+                    'assets/images/smartads_logo.png',
+                    width: 110,
+                    height: 110,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
+              ShaderMask(
+                shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+                child: const Text(
+                  'SMARTADS',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 2.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
               const Text(
-                'SMARTADS',
+                'Smarter Billboards. Greater Impact.',
                 style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
+                  fontSize: 13,
+                  color: AppTheme.accentLight,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.8,
                 ),
               ),
               const SizedBox(height: 16),

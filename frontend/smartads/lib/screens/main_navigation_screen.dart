@@ -170,10 +170,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               height: 72,
               padding: EdgeInsets.symmetric(horizontal: isCompact ? 12 : 24),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceDark,
+                color: AppTheme.surfaceDark.withValues(alpha: 0.80),
                 border: Border(
                   bottom: BorderSide(
-                    color: AppTheme.accentPrimary.withValues(alpha: 0.2),
+                    color: AppTheme.accentPrimary.withValues(alpha: 0.25),
                   ),
                 ),
               ),
@@ -182,16 +182,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   // Logo & Brand Name
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          gradient: AppTheme.primaryGradient,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.hub_rounded,
-                          color: Colors.white,
-                          size: 22,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.asset(
+                          'assets/images/smartads_logo.png',
+                          width: 38,
+                          height: 38,
+                          fit: BoxFit.contain,
                         ),
                       ),
                       if (!isCompact) ...[

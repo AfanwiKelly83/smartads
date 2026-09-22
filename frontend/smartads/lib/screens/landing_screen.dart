@@ -49,51 +49,68 @@ class LandingScreen extends StatelessWidget {
 
   Widget _buildWelcomePanel(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceDark.withValues(alpha: 0.85),
+        color: AppTheme.surfaceDark.withValues(alpha: 0.60),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.accentPrimary.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: AppTheme.accentPrimary.withValues(alpha: 0.35),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.55),
-            blurRadius: 32,
-            offset: const Offset(0, 14),
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 28,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'SMARTADS',
-            style: TextStyle(
-              color: AppTheme.accentPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 2,
-            ),
+          Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  'assets/images/smartads_logo.png',
+                  width: 36,
+                  height: 36,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'SMARTADS',
+                style: TextStyle(
+                  color: AppTheme.accentLight,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           const Text(
             'Smart Advertising.\nSmarter Billboards.',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 32,
+              fontSize: 28,
               fontWeight: FontWeight.w800,
-              height: 1.1,
+              height: 1.15,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           const Text(
-            'Find. Book. Pay. Advertise.',
+            'Find. Book. Pay. Broadcast.',
             style: TextStyle(
               color: AppTheme.textSecondary,
-              fontSize: 18,
-              height: 1.5,
+              fontSize: 16,
+              height: 1.4,
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 28),
           ElevatedButton(
             onPressed: () {
               Navigator.push(
@@ -104,11 +121,11 @@ class LandingScreen extends StatelessWidget {
               );
             },
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 18),
+              padding: const EdgeInsets.symmetric(vertical: 16),
             ),
-            child: const Text('Get Started', style: TextStyle(fontSize: 18)),
+            child: const Text('Get Started', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           OutlinedButton(
             onPressed: () {
               Navigator.push(
@@ -119,12 +136,12 @@ class LandingScreen extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               foregroundColor: AppTheme.textWhite,
               side: const BorderSide(color: AppTheme.accentPrimary),
-              padding: const EdgeInsets.symmetric(vertical: 18),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-            child: const Text('I Already Have an Account', style: TextStyle(fontSize: 16)),
+            child: const Text('I Already Have an Account', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           ),
         ],
       ),

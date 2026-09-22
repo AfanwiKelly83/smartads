@@ -68,9 +68,9 @@ class _VideoBackgroundState extends State<VideoBackground> {
             child: VideoPlayer(_controller),
           ),
         ),
-        // Light translucent overlay to keep background video/image vibrant while ensuring text legibility
+        // Light translucent overlay to keep background video vibrant while ensuring text legibility
         Container(
-          color: Colors.black.withValues(alpha: 0.22),
+          color: Colors.black.withValues(alpha: 0.16),
         ),
         widget.child,
       ],
